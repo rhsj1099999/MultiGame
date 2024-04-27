@@ -3,19 +3,103 @@
   <ItemGroup>
     <Filter Include="소스 파일">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
     <Filter Include="헤더 파일">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
     <Filter Include="리소스 파일">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="00. MainGame">
+      <UniqueIdentifier>{d359d520-290e-4f75-8f35-057be994ffd5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="99. Header">
+      <UniqueIdentifier>{9d3fa14d-e083-46c3-bd71-045ba78496d8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01. Obj">
+      <UniqueIdentifier>{0f427783-caa0-495d-af07-e6c3838a69fe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01. Obj\00. Player">
+      <UniqueIdentifier>{5420a471-c384-4af9-95fc-dc2c31d5e554}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02. Design">
+      <UniqueIdentifier>{fa978f60-f614-4406-8d12-0dcccc8a802a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03. Scene">
+      <UniqueIdentifier>{c5b5f307-3e59-4a5a-adc6-01a2e902671b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02. Design\00. SceneMgr">
+      <UniqueIdentifier>{cd96f0b3-9ce4-423c-b2d4-0f95fc366313}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02. Design\01. AbstractFactory">
+      <UniqueIdentifier>{e76e34b7-8be7-4ffa-a1a6-b926076bcdef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03. Scene\00. WorldMap">
+      <UniqueIdentifier>{8256265b-892b-4815-82bf-0f803f2f63e8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02. Design\02. KeyMgr">
+      <UniqueIdentifier>{8155729d-03bd-4c18-b346-2b2159fdadb4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02. Design\03. UIMgr">
+      <UniqueIdentifier>{46e58b29-7898-4877-8651-9da27814d908}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02. Design\04. ObjMgr">
+      <UniqueIdentifier>{6b8a73a0-6b09-47e0-af38-ef287e5cf697}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01. Obj\01. Portal">
+      <UniqueIdentifier>{a633f006-c748-496f-b229-a9bf446286e6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02. Design\05. CollisionMgr">
+      <UniqueIdentifier>{7d6de1f7-e598-49e8-aa55-755435d1da39}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03. Scene\01. Stage1">
+      <UniqueIdentifier>{e45151c6-d645-4232-af79-fbc73287150e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03. Scene\02. Stage2">
+      <UniqueIdentifier>{a6972c1b-36d0-46af-89be-a8c14f53a865}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03. Scene\03. Stage3">
+      <UniqueIdentifier>{beb143ef-48d4-41b2-bb4a-6ab6f2838c52}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03. Scene\04. Stage4">
+      <UniqueIdentifier>{2cf94980-39cf-4888-9757-438e3db9f8ea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01. Obj\02. FishingRod">
+      <UniqueIdentifier>{9d693fca-b6d4-4258-9ca0-441dea1cad80}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01. Obj\03. Fish">
+      <UniqueIdentifier>{eb27354a-49eb-4775-af22-8d51d97a40e7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01. Obj\04. Roulette">
+      <UniqueIdentifier>{07eddc65-3ac7-43d4-b593-21fd048597a8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01. Obj\04. Roulette\Arrow">
+      <UniqueIdentifier>{c9ed39c6-7b41-4d20-8974-32766bf01d5f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01. Obj\05. Betting">
+      <UniqueIdentifier>{82e1a608-a6e0-4939-a46f-51d121ff062d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01. Obj\06. MoleHunt">
+      <UniqueIdentifier>{3e82bc95-ed26-492b-832f-e18da721f4d0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02. Design\06. KeyMgr2">
+      <UniqueIdentifier>{b0dc4593-7715-44fa-87f3-cc3a0f13a956}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01. Obj\07. HSJ">
+      <UniqueIdentifier>{08c7e5b2-bad3-42eb-b054-a6d0a3af8733}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03. Scene\05. Stage_Exit">
+      <UniqueIdentifier>{7ccc0a82-af13-49e2-b7fe-eb8e4502d952}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="framework.h">
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="stdafx.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="targetver.h">
@@ -24,11 +108,218 @@
     <ClInclude Include="Resource.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Define.h">
+      <Filter>99. Header</Filter>
+    </ClInclude>
+    <ClInclude Include="MainGame.h">
+      <Filter>00. MainGame</Filter>
+    </ClInclude>
+    <ClInclude Include="Include.h">
+      <Filter>99. Header</Filter>
+    </ClInclude>
+    <ClInclude Include="Struct.h">
+      <Filter>99. Header</Filter>
+    </ClInclude>
+    <ClInclude Include="Obj.h">
+      <Filter>01. Obj</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>01. Obj\00. Player</Filter>
+    </ClInclude>
+    <ClInclude Include="TempFunctor.h">
+      <Filter>99. Header</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneMgr.h">
+      <Filter>02. Design\00. SceneMgr</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene.h">
+      <Filter>03. Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Enum.h">
+      <Filter>99. Header</Filter>
+    </ClInclude>
+    <ClInclude Include="WorldMap.h">
+      <Filter>03. Scene\00. WorldMap</Filter>
+    </ClInclude>
+    <ClInclude Include="AbstractFactory.h">
+      <Filter>02. Design\01. AbstractFactory</Filter>
+    </ClInclude>
+    <ClInclude Include="KeyMgr.h">
+      <Filter>02. Design\02. KeyMgr</Filter>
+    </ClInclude>
+    <ClInclude Include="UIMgr.h">
+      <Filter>02. Design\03. UIMgr</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjMgr.h">
+      <Filter>02. Design\04. ObjMgr</Filter>
+    </ClInclude>
+    <ClInclude Include="Portal.h">
+      <Filter>01. Obj\01. Portal</Filter>
+    </ClInclude>
+    <ClInclude Include="CollisionMgr.h">
+      <Filter>02. Design\05. CollisionMgr</Filter>
+    </ClInclude>
+    <ClInclude Include="Stage1.h">
+      <Filter>03. Scene\01. Stage1</Filter>
+    </ClInclude>
+    <ClInclude Include="Stage2.h">
+      <Filter>03. Scene\02. Stage2</Filter>
+    </ClInclude>
+    <ClInclude Include="Stage3.h">
+      <Filter>03. Scene\03. Stage3</Filter>
+    </ClInclude>
+    <ClInclude Include="Stage4.h">
+      <Filter>03. Scene\04. Stage4</Filter>
+    </ClInclude>
+    <ClInclude Include="FishingRod.h">
+      <Filter>01. Obj\02. FishingRod</Filter>
+    </ClInclude>
+    <ClInclude Include="Fish.h">
+      <Filter>01. Obj\03. Fish</Filter>
+    </ClInclude>
+    <ClInclude Include="Roulette.h">
+      <Filter>01. Obj\04. Roulette</Filter>
+    </ClInclude>
+    <ClInclude Include="Arrow.h">
+      <Filter>01. Obj\04. Roulette\Arrow</Filter>
+    </ClInclude>
+    <ClInclude Include="Betting.h">
+      <Filter>01. Obj\05. Betting</Filter>
+    </ClInclude>
+    <ClInclude Include="Mole.h">
+      <Filter>01. Obj\06. MoleHunt</Filter>
+    </ClInclude>
+    <ClInclude Include="MolePlayer.h">
+      <Filter>01. Obj\06. MoleHunt</Filter>
+    </ClInclude>
+    <ClInclude Include="Tunnel.h">
+      <Filter>01. Obj\06. MoleHunt</Filter>
+    </ClInclude>
+    <ClInclude Include="KeyMgr2.h">
+      <Filter>02. Design\06. KeyMgr2</Filter>
+    </ClInclude>
+    <ClInclude Include="CaseHoles.h">
+      <Filter>01. Obj\07. HSJ</Filter>
+    </ClInclude>
+    <ClInclude Include="DownCase.h">
+      <Filter>01. Obj\07. HSJ</Filter>
+    </ClInclude>
+    <ClInclude Include="MidCase.h">
+      <Filter>01. Obj\07. HSJ</Filter>
+    </ClInclude>
+    <ClInclude Include="PirateHead.h">
+      <Filter>01. Obj\07. HSJ</Filter>
+    </ClInclude>
+    <ClInclude Include="UpCase.h">
+      <Filter>01. Obj\07. HSJ</Filter>
+    </ClInclude>
+    <ClInclude Include="Stage_Exit.h">
+      <Filter>03. Scene\05. Stage_Exit</Filter>
+    </ClInclude>
+    <ClInclude Include="Test.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
     <ClInclude Include="Client.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="MainGame.cpp">
+      <Filter>00. MainGame</Filter>
+    </ClCompile>
+    <ClCompile Include="Obj.cpp">
+      <Filter>01. Obj</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>01. Obj\00. Player</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneMgr.cpp">
+      <Filter>02. Design\00. SceneMgr</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene.cpp">
+      <Filter>03. Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="WorldMap.cpp">
+      <Filter>03. Scene\00. WorldMap</Filter>
+    </ClCompile>
+    <ClCompile Include="KeyMgr.cpp">
+      <Filter>02. Design\02. KeyMgr</Filter>
+    </ClCompile>
+    <ClCompile Include="UIMgr.cpp">
+      <Filter>02. Design\03. UIMgr</Filter>
+    </ClCompile>
+    <ClCompile Include="ObjMgr.cpp">
+      <Filter>02. Design\04. ObjMgr</Filter>
+    </ClCompile>
+    <ClCompile Include="Portal.cpp">
+      <Filter>01. Obj\01. Portal</Filter>
+    </ClCompile>
+    <ClCompile Include="CollisionMgr.cpp">
+      <Filter>02. Design\05. CollisionMgr</Filter>
+    </ClCompile>
+    <ClCompile Include="Stage1.cpp">
+      <Filter>03. Scene\01. Stage1</Filter>
+    </ClCompile>
+    <ClCompile Include="Stage2.cpp">
+      <Filter>03. Scene\02. Stage2</Filter>
+    </ClCompile>
+    <ClCompile Include="Stage3.cpp">
+      <Filter>03. Scene\03. Stage3</Filter>
+    </ClCompile>
+    <ClCompile Include="Stage4.cpp">
+      <Filter>03. Scene\04. Stage4</Filter>
+    </ClCompile>
+    <ClCompile Include="FishingRod.cpp">
+      <Filter>01. Obj\02. FishingRod</Filter>
+    </ClCompile>
+    <ClCompile Include="Fish.cpp">
+      <Filter>01. Obj\03. Fish</Filter>
+    </ClCompile>
+    <ClCompile Include="Roulette.cpp">
+      <Filter>01. Obj\04. Roulette</Filter>
+    </ClCompile>
+    <ClCompile Include="Arrow.cpp">
+      <Filter>01. Obj\04. Roulette\Arrow</Filter>
+    </ClCompile>
+    <ClCompile Include="Betting.cpp">
+      <Filter>01. Obj\05. Betting</Filter>
+    </ClCompile>
+    <ClCompile Include="Mole.cpp">
+      <Filter>01. Obj\06. MoleHunt</Filter>
+    </ClCompile>
+    <ClCompile Include="MolePlayer.cpp">
+      <Filter>01. Obj\06. MoleHunt</Filter>
+    </ClCompile>
+    <ClCompile Include="Tunnel.cpp">
+      <Filter>01. Obj\06. MoleHunt</Filter>
+    </ClCompile>
+    <ClCompile Include="KeyMgr2.cpp">
+      <Filter>02. Design\06. KeyMgr2</Filter>
+    </ClCompile>
+    <ClCompile Include="CaseHoles.cpp">
+      <Filter>01. Obj\07. HSJ</Filter>
+    </ClCompile>
+    <ClCompile Include="DownCase.cpp">
+      <Filter>01. Obj\07. HSJ</Filter>
+    </ClCompile>
+    <ClCompile Include="MidCase.cpp">
+      <Filter>01. Obj\07. HSJ</Filter>
+    </ClCompile>
+    <ClCompile Include="PirateHead.cpp">
+      <Filter>01. Obj\07. HSJ</Filter>
+    </ClCompile>
+    <ClCompile Include="UpCase.cpp">
+      <Filter>01. Obj\07. HSJ</Filter>
+    </ClCompile>
+    <ClCompile Include="Stage_Exit.cpp">
+      <Filter>03. Scene\05. Stage_Exit</Filter>
+    </ClCompile>
+    <ClCompile Include="Test.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
     <ClCompile Include="Client.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
