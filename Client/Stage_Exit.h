@@ -8,7 +8,7 @@ public: // Data
 	{
 
 	}
-	~CStage_Exit()
+	virtual ~CStage_Exit()
 	{
 		Release();
 	}

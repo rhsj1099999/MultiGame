@@ -16,6 +16,7 @@ public:
 
 private:
 	char m_Buffer[BUFSIZE] = {};
+	bool m_bSceneChangeeTrigger = false;
 	bool m_bClientConnected = false;
 	WSADATA m_wsa = {};
 	SOCKET m_Socket = {};

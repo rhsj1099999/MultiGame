@@ -3,6 +3,7 @@
 #include <atomic>
 #include <vector>
 #include <mutex>
+#include <map>
 
 #include <CoreLib.h>
 #pragma comment(lib, "CoreLib.lib")
@@ -11,6 +12,7 @@ using namespace std;
 
 int main()
 {
+#pragma region InitServer
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa))
     {
@@ -52,8 +54,16 @@ int main()
     {
         //Break;
     }
-
+#pragma endregion InitServer
     vector<Session*> vecSessions;
+
+    vector<Session*> vecWatingSessions;
+    vector<Session*> vecGamingSessions;
+
+    WSABUF WatingBuf;
+    char Wating[BUFSIZE] = {};
+
+
     vector<thread> vecThreads;
 
     HANDLE hCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0); //만들때는 이렇게
@@ -64,6 +74,8 @@ int main()
                 WorkerEntry(hCPHandle, nullptr);
             }));
     }
+
+    map<wstring, OverlappedExtend*> mapOverlaped;
 
 
     while (true)
@@ -97,34 +109,28 @@ int main()
         CreateIoCompletionPort((HANDLE)ClientSocket, hCPHandle, /*Key*/(ULONG_PTR)pSession, 0); //등록할때는
         cout << "Client Connected!" << endl;
 
+
         OverlappedExtend* OverlapEX = new OverlappedExtend();
         OverlapEX->eType = QUEUEWATING;
 
-        WSABUF wsaBuf;
-
         int TempCurrUser = static_cast<int>(vecSessions.size());
-        memset(pSession->recvBuffer, 0, sizeof(pSession->recvBuffer));
-        memcpy(pSession->recvBuffer, &TempCurrUser, sizeof(TempCurrUser));
+        memset(Wating, 0, sizeof(Wating));
+        memcpy(Wating, &TempCurrUser, sizeof(TempCurrUser));
 
-        wsaBuf.buf = pSession->recvBuffer;
-        wsaBuf.len = BUFSIZE;
+        WatingBuf.buf = Wating;
+        WatingBuf.len = BUFSIZE;
 
         DWORD recvLen = 0;
         DWORD flag = 0;
 
-        WSASend(ClientSocket, &wsaBuf, 1, &recvLen, flag, &OverlapEX->OverlappedEvent, nullptr);
+        for (Session* pSS : vecSessions)
+        {
+            memset(pSS->recvBuffer, 0, sizeof(pSS->recvBuffer));
+            memcpy(pSS->recvBuffer, &TempCurrUser, sizeof(TempCurrUser));
 
-
-
-     /*   OverlappedExtend* OverlapEX = new OverlappedExtend();
-        OverlapEX->eType = READ;
-
-        WSABUF wsaBuf;
-        wsaBuf.buf = pSession->recvBuffer;
-        wsaBuf.len = BUFSIZE;
-        DWORD recvLen = 0;
-        DWORD flag = 0;
-        WSARecv(ClientSocket, &wsaBuf, 1, &recvLen, &flag, &OverlapEX->OverlappedEvent, NULL);*/
+            WSASend(pSS->soc, &WatingBuf, 1, &recvLen, flag, &OverlapEX->OverlappedEvent, nullptr);
+        }
+        
     }
 
 
@@ -134,6 +140,7 @@ int main()
     }
     for (Session* Ss : vecSessions)
     {
+        closesocket(Ss->soc);
         delete Ss;
     }
     WSACleanup();

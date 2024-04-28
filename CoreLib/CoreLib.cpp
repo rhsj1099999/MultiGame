@@ -33,7 +33,7 @@ void WorkerEntry(HANDLE hHandle, WSABUF* pOut)
 
             DWORD recvLen = 0;
             DWORD flag = 0;
-            WSARecv(pSession->soc, &wsaBuf, 1, &recvLen, &flag, &pOverLapEx->OverlappedEvent, NULL);
+            WSARecv(pSession->soc, pOut, 1, &recvLen, &flag, &pOverLapEx->OverlappedEvent, NULL);
         }
         break;
 
@@ -45,12 +45,6 @@ void WorkerEntry(HANDLE hHandle, WSABUF* pOut)
 
         case QUEUEWATING:
         {
-
-
-            //int TempCurrUser = 99;
-            //memset(pSession->recvBuffer, 0, sizeof(pSession->recvBuffer));
-            //memcpy(pSession->recvBuffer, &TempCurrUser, sizeof(TempCurrUser));
-
             WSABUF wsaBuf;
 
             wsaBuf.buf = pSession->recvBuffer;

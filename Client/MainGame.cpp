@@ -53,17 +53,12 @@ void CMainGame::Render(void)
 void CMainGame::Release(void)
 {
 	CObjMgr::Get_Instance()->Release();
-	CObjMgr::Get_Instance()->Destroy_Instance();
-
-	CUIMgr::Get_Instance()->Destroy_Instance();
-
-	CKeyMgr::Get_Instance()->Destroy_Instance();
-
-	//안에 자료가 있는것들은 
 	CSceneMgr::Get_Instance()->Release();
 
+	CObjMgr::Get_Instance()->Destroy_Instance();
+	CUIMgr::Get_Instance()->Destroy_Instance();
+	CKeyMgr::Get_Instance()->Destroy_Instance();
 	CSceneMgr::Get_Instance()->Destroy_Instance();
-
 	CKeyMgr2::Get_Instance()->Destroy_Instance();
 	ReleaseDC(g_hWnd, m_DC);
 }

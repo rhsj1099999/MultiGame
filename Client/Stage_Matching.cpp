@@ -17,6 +17,7 @@ Stage_Matching::~Stage_Matching()
 
 void Stage_Matching::Initialize()
 {
+#pragma region CreateSocket_ToServer
     if (WSAStartup(MAKEWORD(2, 2), &m_wsa))
     {
         //Break;
@@ -35,12 +36,12 @@ void Stage_Matching::Initialize()
         //Break;
     }
 
-    
+
     ZeroMemory(&m_ServerAddr, sizeof(m_ServerAddr));
     m_ServerAddr.sin_family = AF_INET;
     inet_pton(AF_INET, "127.0.0.1", &m_ServerAddr.sin_addr);
     m_ServerAddr.sin_port = htons(7777);
-    
+#pragma endregion CreateSocket_ToServer
 }
 
 void Stage_Matching::Update()
@@ -66,7 +67,7 @@ void Stage_Matching::Update()
                     {
                         m_vecWorkerThreads.push_back(thread([=]()
                             {
-                                WorkerEntry(hCPHandle, nullptr);
+                                WorkerEntry(hCPHandle, &m_wsaBuffer);
                             }));
                     }
 
@@ -87,19 +88,15 @@ void Stage_Matching::Update()
             }
         }
     }
-
-
-
-
-    //char chSendBuffer[100] = "HelloWorld";
-    //WSAEVENT wsaEvent = WSACreateEvent();
-    //WSAOVERLAPPED wsaOverLapped = {};
-    //wsaOverLapped.hEvent = wsaEvent;
 }
 
 void Stage_Matching::Late_Update()
 {
    //SceneChange
+    if (m_bSceneChangeeTrigger)
+    {
+        CSceneMgr::Get_Instance()->Scene_Change(SC_WORLDMAP);
+    }
 }
 
 void Stage_Matching::Render(HDC hDC)
@@ -120,6 +117,11 @@ void Stage_Matching::Render(HDC hDC)
         int User = 0;
         memcpy(&User, m_wsaBuffer.buf, sizeof(int));
 
+        if (User >= MaxUsers)
+        {
+            m_bSceneChangeeTrigger = true;
+        }
+
         wsprintf(szBuff, L"매칭중... 인원수 = %d / %d", User, MaxUsers);
         TextOut(hDC, WINCX / 2, WINCY / 2, szBuff, lstrlen(szBuff));
     }
@@ -132,9 +134,22 @@ void Stage_Matching::Release()
 {
     for (vector<thread>::iterator itr = m_vecWorkerThreads.begin(); itr != m_vecWorkerThreads.end(); ++itr)
     {
-        itr->join();
+        if (itr->joinable())
+        {
+            itr->join();
+        }
     }
-    CObjMgr::Get_Instance()->Release();
-    CObjMgr::Get_Instance()->Destroy_Instance();
+
+
+
+    if (m_Socket)
+    {
+        closesocket(m_Socket);
+    }
+    
     WSACleanup();
+
+    CObjMgr::Get_Instance()->Release();
+
+    CObjMgr::Get_Instance()->Destroy_Instance();
 }

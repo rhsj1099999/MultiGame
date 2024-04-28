@@ -10,13 +10,16 @@ class CPortal : public CObj
 		EXIT,
 		END,
 	};
-	wstring m_PortalNames[static_cast<int>(PortalType::END)]
-	{
-		L"Single",
-		L"Multi",
-		L"Exit"
-	};
+	//wstring m_PortalNames[static_cast<int>(PortalType::END)]
+	//{
+	//	L"Single",
+	//	L"Multi",
+	//	L"Exit"
+	//};
 public:
+	CPortal();
+	virtual ~CPortal();
+
 	// CObj을(를) 통해 상속됨
 	virtual void Initialize(void) override;
 	virtual int Update(void) override;

@@ -1,12 +1,13 @@
 #include "stdafx.h"
 #include "SceneMgr.h"
 #include "WorldMap.h"
-#include "Stage1.h"
-#include "Stage2.h"
-#include "Stage3.h"
+//#include "Stage1.h"
+//#include "Stage2.h"
+//#include "Stage3.h"
 #include "Stage4.h"
 #include "Stage_Matching.h"
 #include "Stage_Exit.h"
+
 CSceneMgr* CSceneMgr::m_pInstance = nullptr;
 bool		CSceneMgr::m_IsChange = false;
 
@@ -43,15 +44,15 @@ void CSceneMgr::Scene_Change(SCENEID eID)
 		case SC_WORLDMAP:
 			m_pScene = new CWorldMap;
 			break;
-		case SC_STAGE1:
-			m_pScene = new CStage1;
-			break;
-		case SC_STAGE2:
-			m_pScene = new CStage2;
-			break;
-		case SC_STAGE3:
-			m_pScene = new CStage3;
-			break;
+		//case SC_STAGE1:
+		//	m_pScene = new CStage1;
+		//	break;
+		//case SC_STAGE2:
+		//	m_pScene = new CStage2;
+		//	break;
+		//case SC_STAGE3:
+		//	//m_pScene = new CStage3;
+		//	break;
 		case SC_STAGE4:
 			m_pScene = new CStage4;
 			break;

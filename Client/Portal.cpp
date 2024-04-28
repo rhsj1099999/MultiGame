@@ -3,6 +3,15 @@
 #include "SceneMgr.h"
 #include "UIMgr.h"
 
+CPortal::CPortal()
+{
+}
+
+CPortal::~CPortal()
+{
+	Release();
+}
+
 void CPortal::Initialize(void)
 {
 	m_tInfo.vScale.x = 200;
@@ -48,7 +57,23 @@ void CPortal::Set_PortalNumber(int _iNumber)
 {
 	m_iPortalNumber = _iNumber;
 	m_ePortalType = static_cast<PortalType>(_iNumber);
-	m_PortalName = m_PortalNames[_iNumber];
+	switch (m_ePortalType)
+	{
+	case CPortal::PortalType::SINGLE:
+		m_PortalName = L"Single";
+		break;
+	case CPortal::PortalType::MULTI:
+		m_PortalName = L"Multi";
+		break;
+	case CPortal::PortalType::EXIT:
+		m_PortalName = L"Exit";
+		break;
+	case CPortal::PortalType::END:
+		break;
+	default:
+		m_PortalName = L"Exit";
+		break;
+	}
 }
 
 void CPortal::Change_Scene()

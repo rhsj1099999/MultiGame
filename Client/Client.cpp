@@ -25,6 +25,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,			// 메모리에 할당되는 실체, 즉 
                      _In_ int       nCmdShow)			// Ctrl + F5를 통해 창 실행 가능, 실행한 창의 스타일을 매개 변수 형태로 넘겨받음
 {
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF); // 메모리 누수 감지를 위한 코드
+	//_CrtSetBreakAlloc(304);
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
@@ -51,16 +52,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,			// 메모리에 할당되는 실체, 즉 
 	MainGame.Initialize();
 
 	DWORD	dwOldTime = GetTickCount();
-	// 운영체제(os)가 구동된 시점으로 부터 특정 정수 값을 반환
-	// 상승하던 값이 대략 1000정도가 됐을 때를 1초로 판단하는 개념
-	// GetTickCount 반환값을 대략 1 / 1000초로 판단
 
-
-    // 기본 메시지 루프입니다.
     while (true)
     {
-			// PM_REMOVE : 메세지를 읽어옴과 동시에 메시지 큐에서 제거
-			// PM_NOREMOVE : 메세지 큐에 메시지가 존재하는지만 판단한다.
 		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
 			if (WM_QUIT == msg.message)
