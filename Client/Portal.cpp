@@ -47,56 +47,27 @@ void CPortal::Cal_WorldMatrix()
 void CPortal::Set_PortalNumber(int _iNumber)
 {
 	m_iPortalNumber = _iNumber;
-	switch (m_iPortalNumber)
-	{
-	case 1:
-		this->m_PortalName = L"µŒ¥ı¡ˆ ¿‚±‚";
-		break;
-	case 2:
-		this->m_PortalName = L"∑Í∑ø";
-		break;
-	case 3:
-		this->m_PortalName = L"≥¨Ω√";
-		break;
-	case 4:
-		this->m_PortalName = L"«ÿ¿˚ ∑Í∑ø";
-		break;
-	case 5:
-		this->m_PortalName = L"≈ª√‚±∏";
-		break;
-	}
+	m_ePortalType = static_cast<PortalType>(_iNumber);
+	m_PortalName = m_PortalNames[_iNumber];
 }
 
 void CPortal::Change_Scene()
 {
-	switch (m_iPortalNumber)
+	switch (m_ePortalType)
 	{
-	case 1:
-		if (CUIMgr::Get_Instance()->Get_Money() >= 500)
-		{
-			CUIMgr::Get_Instance()->Add_Money(-500);
-			CSceneMgr::Get_Instance()->Scene_Change(SC_STAGE1);
-		}
-
-		break;
-	case 2:
-		CSceneMgr::Get_Instance()->Scene_Change(SC_STAGE2);
-		break;
-	case 3:
-		if (CUIMgr::Get_Instance()->Get_Money() >= 100)
-		{
-			CUIMgr::Get_Instance()->Add_Money(-100);
-			CSceneMgr::Get_Instance()->Scene_Change(SC_STAGE3);
-		}
-		break;
-	case 4:
+	case CPortal::PortalType::SINGLE:
 		CSceneMgr::Get_Instance()->Scene_Change(SC_STAGE4);
 		break;
-	case 5:
-		if (CUIMgr::Get_Instance()->Get_Money() >= 5000)
-		{
-			CSceneMgr::Get_Instance()->Scene_Change(SC_STAGE_EXIT);
-		}
+	case CPortal::PortalType::MULTI:
+		CSceneMgr::Get_Instance()->Scene_Change(SC_MATCHINGSTAGE);
+		//MultiScene
+		break;
+	case CPortal::PortalType::EXIT:
+		CSceneMgr::Get_Instance()->Scene_Change(SC_STAGE_EXIT);
+		break;
+	case CPortal::PortalType::END:
+		break;
+	default:
 		break;
 	}
 }

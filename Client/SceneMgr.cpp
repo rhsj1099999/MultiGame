@@ -5,6 +5,7 @@
 #include "Stage2.h"
 #include "Stage3.h"
 #include "Stage4.h"
+#include "Stage_Matching.h"
 #include "Stage_Exit.h"
 CSceneMgr* CSceneMgr::m_pInstance = nullptr;
 bool		CSceneMgr::m_IsChange = false;
@@ -53,6 +54,9 @@ void CSceneMgr::Scene_Change(SCENEID eID)
 			break;
 		case SC_STAGE4:
 			m_pScene = new CStage4;
+			break;
+		case SC_MATCHINGSTAGE:
+			m_pScene = new Stage_Matching;
 			break;
 		case SC_STAGE_EXIT:
 			m_pScene = new CStage_Exit;

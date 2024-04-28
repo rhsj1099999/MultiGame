@@ -3,6 +3,19 @@
 
 class CPortal : public CObj
 {
+	enum class PortalType
+	{
+		SINGLE,
+		MULTI,
+		EXIT,
+		END,
+	};
+	wstring m_PortalNames[static_cast<int>(PortalType::END)]
+	{
+		L"Single",
+		L"Multi",
+		L"Exit"
+	};
 public:
 	// CObj을(를) 통해 상속됨
 	virtual void Initialize(void) override;
@@ -18,6 +31,7 @@ public:
 	void Change_Scene();
 private:
 	int m_iPortalNumber;
+	PortalType m_ePortalType = PortalType::END;
 	wstring m_PortalName = L"None";
 };
 

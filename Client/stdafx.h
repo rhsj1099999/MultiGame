@@ -30,6 +30,18 @@
 #include <d3d9.h>
 #include <d3dx9.h>
 
+#include <thread>
+#include <atomic>
+#include <vector>
+#include <mutex>
+
+#include <WinSock2.h>
+#include <mswsock.h>
+#include <ws2tcpip.h>
+#include <CoreLib.h>
+
+#pragma comment(lib, "CoreLib.lib")
+#pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "d3d9.lib")
 #pragma comment(lib, "d3dx9.lib")
 

@@ -1,5 +1,8 @@
 #pragma once
 
+
+
+
 typedef struct tagInfo
 {
 	D3DXVECTOR3		vScale;
