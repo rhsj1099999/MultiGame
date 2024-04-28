@@ -44,12 +44,80 @@ void Stage_Matching::Initialize()
 #pragma endregion CreateSocket_ToServer
 }
 
+void WorkerEntry_D(HANDLE hHandle, char* pOut, int size = 100)
+{
+    while (true)
+    {
+        DWORD Bytes = 0;
+        ClientSession* pSession = nullptr;
+        LPOVERLAPPED pOverlap = nullptr;
+
+        bool bRet = GetQueuedCompletionStatus(hHandle, &Bytes, (ULONG_PTR*)&pSession, (LPOVERLAPPED*)&pOverlap, INFINITE);
+
+        if (bRet == FALSE || Bytes == 0)
+        {
+            //Close Socket
+            continue;
+        }
+
+        switch (pSession->eType)
+        {
+        case READ:
+        {
+            if (pOut != nullptr)
+            {
+                memcpy(pOut, pSession->wsaBuf.buf, size);
+            }
+            pSession->wsaBuf.buf = pSession->recvBuffer;
+            pSession->wsaBuf.len = sizeof(pSession->recvBuffer);
+
+            DWORD recvLen = 0;
+            DWORD flag = 0;
+            WSARecv(pSession->soc, &pSession->wsaBuf, 1, &recvLen, &flag, &pSession->OverlappedEvent, NULL);
+            //WSARecv(pSession->soc, &pSession->wsaBuf, 1, &Bytes, &flag, (LPOVERLAPPED)&pOverlap, NULL);
+            //아래껀 되고, 위에거는 안됨
+        }
+        break;
+
+        case WRITE:
+        {
+        }
+        break;
+
+        case QUEUEWATING:
+        {
+
+            //int TempCurrUser = static_cast<int>(liClientSessions.size());
+            //memset(pSession->recvBuffer, 0, sizeof(pSession->recvBuffer));
+            //memcpy(pSession->recvBuffer, &TempCurrUser, sizeof(TempCurrUser));
+
+            //pSession->wsaBuf.buf = pSession->recvBuffer;
+            //pSession->wsaBuf.len = sizeof(pSession->recvBuffer);
+
+            //DWORD recvLen = 0;
+            //DWORD flag = 0;
+
+            ////WSABUF DataBuf;
+            ////DataBuf.buf = pSession->recvBuffer;
+            ////DataBuf.len = BUFSIZE;
+
+            ////DWORD recvLen = 0;
+            ////DWORD flag = 0;
+            //WSASend((pSession)->soc, &pSession->wsaBuf, 1, &recvLen, flag, &(pSession)->OverlappedEvent, NULL);
+        }
+        break;
+
+
+        default:
+            break;
+        }
+    }
+}
+
+
 void Stage_Matching::Update()
 {
-    if (m_bClientConnected == true)
-        return;
-
-    while (true)
+    while (true && m_bClientConnected == false)
     {
         if (connect(m_Socket, (SOCKADDR*)&m_ServerAddr, sizeof(m_ServerAddr)) == SOCKET_ERROR)
         {
@@ -60,34 +128,56 @@ void Stage_Matching::Update()
 
             if (WSAGetLastError() == WSAEISCONN)
             {
+                m_bClientConnected = true;
+//#pragma region ClientIOCP
+                HANDLE hCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
+                m_bClientConnected = true;
+                for (int i = 0; i < 2; i++)
                 {
-                    HANDLE hCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
-                    m_bClientConnected = true;
-                    for (int i = 0; i < 2; i++)
-                    {
-                        m_vecWorkerThreads.push_back(thread([=]()
-                            {
-                                WorkerEntry(hCPHandle, &m_wsaBuffer);
-                            }));
-                    }
-
-                    if (m_pOverlapEX != nullptr)
-                        delete m_pOverlapEX;
-
-                    m_pOverlapEX = new OverlappedExtend();
-                    m_pOverlapEX->eType = READ;
-
-                    m_wsaBuffer.buf = m_Buffer;
-                    m_wsaBuffer.len = BUFSIZE;
-                    DWORD recvLen = 0;
-                    DWORD flag = 0;
-                    WSARecv(m_Socket, &m_wsaBuffer, 1, &recvLen, &flag, &m_pOverlapEX->OverlappedEvent, NULL);
+                    m_vecWorkerThreads.push_back(thread([=]()
+                        {
+                            WorkerEntry_D(hCPHandle, m_Buffer);
+                        }));
                 }
 
+                
+
+
+                ClientSession* pSession = new ClientSession;
+                pSession->soc = m_Socket;
+                pSession->OverlappedEvent = {};
+                pSession->OverlappedEvent.hEvent = WSACreateEvent();
+                pSession->eType = READ;
+                pSession->wsaBuf.buf = pSession->recvBuffer;
+                pSession->wsaBuf.len = sizeof(pSession->recvBuffer);
+                CreateIoCompletionPort((HANDLE)m_Socket, hCPHandle, /*Key*/(ULONG_PTR)pSession, 0); //등록할때는
+
+
+                //WSABUF DataBuf;
+                //DataBuf.buf = pSession->recvBuffer;
+                //DataBuf.len = BUFSIZE;
+
+                DWORD recvLen = 0;
+                DWORD flag = 0;
+                WSARecv(pSession->soc, &pSession->wsaBuf, 1, &recvLen, &flag, &pSession->OverlappedEvent, NULL);
+//#pragma endregion ClientIOCP
                 break;
             }
         }
     }
+    
+    
+    //if (recv(m_Socket, m_Buffer, sizeof(m_Buffer), 0) == SOCKET_ERROR)
+    //{
+    //    if (WSAGetLastError() != WSAEWOULDBLOCK)
+    //    {
+    //        //Game Break;
+    //    }
+    //}
+    //else
+    //{
+    //    memcpy(&m_iCurrUser, m_Buffer, sizeof(int));
+    //}
 }
 
 void Stage_Matching::Late_Update()
@@ -111,18 +201,12 @@ void Stage_Matching::Render(HDC hDC)
     }
     else
     {
-        int CurrUsers = 1;
         int MaxUsers = 4;
+
+        memcpy(&m_iCurrUser, m_Buffer, sizeof(int));
         
-        int User = 0;
-        memcpy(&User, m_wsaBuffer.buf, sizeof(int));
 
-        if (User >= MaxUsers)
-        {
-            m_bSceneChangeeTrigger = true;
-        }
-
-        wsprintf(szBuff, L"매칭중... 인원수 = %d / %d", User, MaxUsers);
+        wsprintf(szBuff, L"매칭중... 인원수 = %d / %d", m_iCurrUser, MaxUsers);
         TextOut(hDC, WINCX / 2, WINCY / 2, szBuff, lstrlen(szBuff));
     }
 
@@ -142,10 +226,9 @@ void Stage_Matching::Release()
 
 
 
-    if (m_Socket)
-    {
-        closesocket(m_Socket);
-    }
+    shutdown(m_Socket, SD_BOTH);
+
+    closesocket(m_Socket);
     
     WSACleanup();
 

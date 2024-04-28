@@ -22,6 +22,7 @@ private:
 	SOCKET m_Socket = {};
 	SOCKADDR_IN m_ServerAddr = {};
 	vector<thread> m_vecWorkerThreads;
+	int m_iCurrUser = 1; //At Least Me
 
 	OverlappedExtend* m_pOverlapEX = nullptr;
 	WSABUF m_wsaBuffer;

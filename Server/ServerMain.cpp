@@ -2,16 +2,105 @@
 #include <thread>
 #include <atomic>
 #include <vector>
+#include <list>
 #include <mutex>
 #include <map>
+
 
 #include <CoreLib.h>
 #pragma comment(lib, "CoreLib.lib")
 
+#include "Timer.h"
+
 using namespace std;
+
+list<ClientSession*> liClientSessions;
+
+void CheckResponse()
+{
+
+}
+
+void WorkerEntry_D(HANDLE hHandle, WSABUF* pOut)
+{
+    while (true)
+    {
+        DWORD Bytes = 0;
+        ClientSession* pSession = nullptr;
+        LPOVERLAPPED pOverlap = nullptr;
+
+        bool bRet = GetQueuedCompletionStatus(hHandle, &Bytes, (ULONG_PTR*)&pSession, (LPOVERLAPPED*)&pOverlap, INFINITE);
+
+        if (bRet == FALSE || Bytes == 0)
+        {
+            //Close Socket
+            continue;
+        }
+
+        DWORD ResponeTime = pSession->Respones;
+
+        if ((Timer::GetInstance()->GetCurrTime() - pSession->Respones) > 1000)
+        {
+            ++pSession->LateCount;
+        }
+
+        switch (pSession->eType)
+        {
+        case READ:
+        {
+            WSABUF DataBuf;
+            DataBuf.buf = pSession->recvBuffer;
+            DataBuf.len = BUFSIZE;
+
+            DWORD recvLen = 0;
+            DWORD flag = 0;
+            WSARecv(pSession->soc, &DataBuf, 1, &recvLen, &flag, (LPOVERLAPPED)&pOverlap, NULL);
+        }
+        break;
+
+        case WRITE:
+        {
+        }
+        break;
+
+        case QUEUEWATING:
+        {
+
+            int TempCurrUser = static_cast<int>(liClientSessions.size());
+            memset(pSession->recvBuffer, 0, sizeof(pSession->recvBuffer));
+            memcpy(pSession->recvBuffer, &TempCurrUser, sizeof(TempCurrUser));
+
+            pSession->wsaBuf.buf = pSession->recvBuffer;
+            pSession->wsaBuf.len = sizeof(pSession->recvBuffer);
+
+            DWORD recvLen = 0;
+            DWORD flag = 0;
+
+            //WSABUF DataBuf;
+            //DataBuf.buf = pSession->recvBuffer;
+            //DataBuf.len = BUFSIZE;
+
+            //DWORD recvLen = 0;
+            //DWORD flag = 0;
+            WSASend((pSession)->soc, &pSession->wsaBuf, 1, &recvLen, flag, &(pSession)->OverlappedEvent, NULL);
+        }
+        break;
+
+
+        default:
+            break;
+        }
+    }
+}
+
+
 
 int main()
 {
+    Timer* pTimer = Timer::GetInstance();
+    pTimer->Init();
+
+
 #pragma region InitServer
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa))
@@ -55,14 +144,10 @@ int main()
         //Break;
     }
 #pragma endregion InitServer
-    vector<Session*> vecSessions;
 
-    vector<Session*> vecWatingSessions;
-    vector<Session*> vecGamingSessions;
 
-    WSABUF WatingBuf;
+
     char Wating[BUFSIZE] = {};
-
 
     vector<thread> vecThreads;
 
@@ -71,19 +156,23 @@ int main()
     {
         vecThreads.push_back(thread([=]()
             {
-                WorkerEntry(hCPHandle, nullptr);
+                WorkerEntry_D(hCPHandle, nullptr);
             }));
     }
 
     map<wstring, OverlappedExtend*> mapOverlaped;
 
+    SOCKET ClientSocket;
+    SOCKADDR_IN ClientAddress;
+    __int32 AddrLen = sizeof(ClientAddress);
+
 
     while (true)
     {
-        SOCKET ClientSocket;
-        SOCKADDR_IN ClientAddress;
-        __int32 AddrLen = sizeof(ClientAddress);
+        pTimer->Tick();
 
+
+#pragma region ConnectTry
         while (true)
         {
             ClientSocket = accept(socReciver, (SOCKADDR*)&ClientAddress, &AddrLen);
@@ -102,35 +191,64 @@ int main()
                 break;
             }
         }
+#pragma endregion ConnectTry
 
-
-        Session* pSession = new Session{ ClientSocket };
-        vecSessions.push_back(pSession);
+        ClientSession* pSession = new ClientSession;
+        pSession->soc = ClientSocket;
+        pSession->OverlappedEvent = {};
+        pSession->OverlappedEvent.hEvent = WSACreateEvent();
+        pSession->eType = QUEUEWATING;
+        pSession->Respones = Timer::GetInstance()->GetCurrTime();
+        pSession->LateCount = 0;
         CreateIoCompletionPort((HANDLE)ClientSocket, hCPHandle, /*Key*/(ULONG_PTR)pSession, 0); //등록할때는
+        liClientSessions.push_back(pSession);
         cout << "Client Connected!" << endl;
 
 
-        OverlappedExtend* OverlapEX = new OverlappedExtend();
-        OverlapEX->eType = QUEUEWATING;
+        
+#pragma region TRASH
+        //for (list<ClientSession*>::iterator itr = liClientSessions.begin(); itr != liClientSessions.end(); ++itr)
+//{
+//    if ((*itr)->LateCount >= 3)
+//    {
+//        //Bad Socket
+//    }
 
-        int TempCurrUser = static_cast<int>(vecSessions.size());
-        memset(Wating, 0, sizeof(Wating));
-        memcpy(Wating, &TempCurrUser, sizeof(TempCurrUser));
+//    WSABUF DataBuf;
+//    DataBuf.buf = pSession->recvBuffer;
+//    DataBuf.len = BUFSIZE;
 
-        WatingBuf.buf = Wating;
-        WatingBuf.len = BUFSIZE;
+//    DWORD recvLen = 0;
+//    DWORD flag = 0;
+//    if (WSASend((*itr)->soc, &DataBuf, 1, &recvLen, flag, &(*itr)->OverlappedEvent, nullptr) == SOCKET_ERROR)
+//    {
+//        int a = 10;
+//    }
+//}
+#pragma endregion TRASH
+
+        //WSABUF DataBuf;
+        //DataBuf.buf = pSession->recvBuffer;
+        //DataBuf.len = BUFSIZE;
+
+
+        int TempCurrUser = static_cast<int>(liClientSessions.size());
+        memset(pSession->recvBuffer, 0, sizeof(pSession->recvBuffer));
+        memcpy(pSession->recvBuffer, &TempCurrUser, sizeof(TempCurrUser));
+
 
         DWORD recvLen = 0;
         DWORD flag = 0;
 
-        for (Session* pSS : vecSessions)
+        pSession->wsaBuf.buf = pSession->recvBuffer;
+        pSession->wsaBuf.len = sizeof(pSession->recvBuffer);
+        if (WSASend((pSession)->soc, &pSession->wsaBuf, 1, &recvLen, flag, &(pSession)->OverlappedEvent, NULL) == SOCKET_ERROR)
         {
-            memset(pSS->recvBuffer, 0, sizeof(pSS->recvBuffer));
-            memcpy(pSS->recvBuffer, &TempCurrUser, sizeof(TempCurrUser));
-
-            WSASend(pSS->soc, &WatingBuf, 1, &recvLen, flag, &OverlapEX->OverlappedEvent, nullptr);
+            if (WSAGetLastError() != WSA_IO_PENDING)
+            {
+                delete pSession;
+            }
         }
-        
     }
 
 
@@ -138,11 +256,12 @@ int main()
     {
         Itr->join();
     }
-    for (Session* Ss : vecSessions)
-    {
-        closesocket(Ss->soc);
-        delete Ss;
-    }
+    //for (Session* Ss : vecSessions)
+    //{
+    //    closesocket(Ss->soc);
+    //    delete Ss;
+    //}
+    closesocket(socReciver);
     WSACleanup();
     return 0;
 }
