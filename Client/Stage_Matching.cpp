@@ -52,11 +52,19 @@ void WorkerEntry_D(HANDLE hHandle, char* pOut, int size = 100)
         ClientSession* pSession = nullptr;
         LPOVERLAPPED pOverlap = nullptr;
 
-        bool bRet = GetQueuedCompletionStatus(hHandle, &Bytes, (ULONG_PTR*)&pSession, (LPOVERLAPPED*)&pOverlap, INFINITE);
+        bool bRet = GetQueuedCompletionStatus(hHandle, &Bytes, (ULONG_PTR*)&pSession, (LPOVERLAPPED*)&pOverlap, 1000);
 
         if (bRet == FALSE || Bytes == 0)
         {
             //Close Socket
+            if (WSAGetLastError() == WAIT_TIMEOUT)
+                return;
+
+            if (WSAGetLastError() == ERROR_IO_PENDING)
+            {
+                int a = 10;
+            }
+
             continue;
         }
 
@@ -66,14 +74,19 @@ void WorkerEntry_D(HANDLE hHandle, char* pOut, int size = 100)
         {
             if (pOut != nullptr)
             {
-                memcpy(pOut, pSession->wsaBuf.buf, size);
+                if (Bytes == pSession->wsaBuf.len)
+                {
+                    memcpy(pOut, pSession->wsaBuf.buf, size);
+                }
             }
             pSession->wsaBuf.buf = pSession->recvBuffer;
             pSession->wsaBuf.len = sizeof(pSession->recvBuffer);
+            //pSession->OverlappedEvent.hEvent = WSACreateEvent();
 
             DWORD recvLen = 0;
             DWORD flag = 0;
             WSARecv(pSession->soc, &pSession->wsaBuf, 1, &recvLen, &flag, &pSession->OverlappedEvent, NULL);
+            //WSARecv(pSession->soc, &pSession->wsaBuf, 1, &recvLen, &flag, &pSession->OverlappedEvent, NULL);
             //WSARecv(pSession->soc, &pSession->wsaBuf, 1, &Bytes, &flag, (LPOVERLAPPED)&pOverlap, NULL);
             //아래껀 되고, 위에거는 안됨
         }
@@ -132,7 +145,7 @@ void Stage_Matching::Update()
 //#pragma region ClientIOCP
                 HANDLE hCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
                 m_bClientConnected = true;
-                for (int i = 0; i < 2; i++)
+                for (int i = 0; i < 5; i++)
                 {
                     m_vecWorkerThreads.push_back(thread([=]()
                         {
@@ -152,10 +165,6 @@ void Stage_Matching::Update()
                 pSession->wsaBuf.len = sizeof(pSession->recvBuffer);
                 CreateIoCompletionPort((HANDLE)m_Socket, hCPHandle, /*Key*/(ULONG_PTR)pSession, 0); //등록할때는
 
-
-                //WSABUF DataBuf;
-                //DataBuf.buf = pSession->recvBuffer;
-                //DataBuf.len = BUFSIZE;
 
                 DWORD recvLen = 0;
                 DWORD flag = 0;
@@ -216,6 +225,8 @@ void Stage_Matching::Render(HDC hDC)
 
 void Stage_Matching::Release()
 {
+    closesocket(m_Socket);
+
     for (vector<thread>::iterator itr = m_vecWorkerThreads.begin(); itr != m_vecWorkerThreads.end(); ++itr)
     {
         if (itr->joinable())
@@ -224,11 +235,7 @@ void Stage_Matching::Release()
         }
     }
 
-
-
     shutdown(m_Socket, SD_BOTH);
-
-    closesocket(m_Socket);
     
     WSACleanup();
 

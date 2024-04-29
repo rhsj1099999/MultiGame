@@ -34,6 +34,11 @@ void WorkerEntry_D(HANDLE hHandle, WSABUF* pOut)
         if (bRet == FALSE || Bytes == 0)
         {
             //Close Socket
+            if (WSAGetLastError() == WAIT_TIMEOUT)
+            {
+                int a = 10;
+                break;
+            }
             continue;
         }
 
@@ -65,7 +70,6 @@ void WorkerEntry_D(HANDLE hHandle, WSABUF* pOut)
 
         case QUEUEWATING:
         {
-
             int TempCurrUser = static_cast<int>(liClientSessions.size());
             memset(pSession->recvBuffer, 0, sizeof(pSession->recvBuffer));
             memcpy(pSession->recvBuffer, &TempCurrUser, sizeof(TempCurrUser));
@@ -76,12 +80,6 @@ void WorkerEntry_D(HANDLE hHandle, WSABUF* pOut)
             DWORD recvLen = 0;
             DWORD flag = 0;
 
-            //WSABUF DataBuf;
-            //DataBuf.buf = pSession->recvBuffer;
-            //DataBuf.len = BUFSIZE;
-
-            //DWORD recvLen = 0;
-            //DWORD flag = 0;
             WSASend((pSession)->soc, &pSession->wsaBuf, 1, &recvLen, flag, &(pSession)->OverlappedEvent, NULL);
         }
         break;
@@ -204,38 +202,9 @@ int main()
         liClientSessions.push_back(pSession);
         cout << "Client Connected!" << endl;
 
-
-        
-#pragma region TRASH
-        //for (list<ClientSession*>::iterator itr = liClientSessions.begin(); itr != liClientSessions.end(); ++itr)
-//{
-//    if ((*itr)->LateCount >= 3)
-//    {
-//        //Bad Socket
-//    }
-
-//    WSABUF DataBuf;
-//    DataBuf.buf = pSession->recvBuffer;
-//    DataBuf.len = BUFSIZE;
-
-//    DWORD recvLen = 0;
-//    DWORD flag = 0;
-//    if (WSASend((*itr)->soc, &DataBuf, 1, &recvLen, flag, &(*itr)->OverlappedEvent, nullptr) == SOCKET_ERROR)
-//    {
-//        int a = 10;
-//    }
-//}
-#pragma endregion TRASH
-
-        //WSABUF DataBuf;
-        //DataBuf.buf = pSession->recvBuffer;
-        //DataBuf.len = BUFSIZE;
-
-
         int TempCurrUser = static_cast<int>(liClientSessions.size());
         memset(pSession->recvBuffer, 0, sizeof(pSession->recvBuffer));
         memcpy(pSession->recvBuffer, &TempCurrUser, sizeof(TempCurrUser));
-
 
         DWORD recvLen = 0;
         DWORD flag = 0;

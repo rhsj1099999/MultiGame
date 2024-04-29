@@ -16,7 +16,7 @@
 
 struct ClientSession
 {
-    WSAOVERLAPPED OverlappedEvent = {};
+    WSAOVERLAPPED OverlappedEvent;
     SOCKET soc = INVALID_SOCKET;
     WSABUF wsaBuf = {};
     __int32 eType = 0;
