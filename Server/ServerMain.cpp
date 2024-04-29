@@ -70,16 +70,32 @@ void WorkerEntry_D(HANDLE hHandle, WSABUF* pOut)
 
         case QUEUEWATING:
         {
-            int TempCurrUser = static_cast<int>(liClientSessions.size());
-            memset(pSession->recvBuffer, 0, sizeof(pSession->recvBuffer));
-            memcpy(pSession->recvBuffer, &TempCurrUser, sizeof(TempCurrUser));
 
-            pSession->wsaBuf.buf = pSession->recvBuffer;
-            pSession->wsaBuf.len = sizeof(pSession->recvBuffer);
+
+            pSession->ByteTransferred += Bytes;
+            if (pSession->ByteTransferred < pSession->ByteToSent)
+            {
+                pSession->wsaBuf.buf = &(pSession->recvBuffer[pSession->ByteTransferred]);
+                pSession->wsaBuf.len = sizeof(pSession->recvBuffer - pSession->ByteTransferred);
+            }
+            else
+            {
+                int TempCurrUser = static_cast<int>(liClientSessions.size());
+                //memset(pSession->recvBuffer, 0, sizeof(pSession->recvBuffer));
+                memcpy(pSession->recvBuffer, &TempCurrUser, sizeof(TempCurrUser));
+
+                pSession->wsaBuf.buf = pSession->recvBuffer;
+                pSession->wsaBuf.len = 4;
+                pSession->ByteTransferred = 0;
+                pSession->ByteToSent = sizeof(int);
+            }
+
+
+            //pSession->wsaBuf.buf = pSession->recvBuffer;
+            //pSession->wsaBuf.len = sizeof(pSession->recvBuffer);
 
             DWORD recvLen = 0;
             DWORD flag = 0;
-
             WSASend((pSession)->soc, &pSession->wsaBuf, 1, &recvLen, flag, &(pSession)->OverlappedEvent, NULL);
         }
         break;
@@ -150,7 +166,7 @@ int main()
     vector<thread> vecThreads;
 
     HANDLE hCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0); //만들때는 이렇게
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 10; i++)
     {
         vecThreads.push_back(thread([=]()
             {
@@ -210,7 +226,9 @@ int main()
         DWORD flag = 0;
 
         pSession->wsaBuf.buf = pSession->recvBuffer;
-        pSession->wsaBuf.len = sizeof(pSession->recvBuffer);
+        pSession->wsaBuf.len = 4;
+        pSession->ByteTransferred = 0;
+        pSession->ByteToSent = sizeof(int);
         if (WSASend((pSession)->soc, &pSession->wsaBuf, 1, &recvLen, flag, &(pSession)->OverlappedEvent, NULL) == SOCKET_ERROR)
         {
             if (WSAGetLastError() != WSA_IO_PENDING)

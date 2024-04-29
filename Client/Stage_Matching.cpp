@@ -72,15 +72,37 @@ void WorkerEntry_D(HANDLE hHandle, char* pOut, int size = 100)
         {
         case READ:
         {
-            if (pOut != nullptr)
+            //pSession->ByteTransferred += Bytes;
+            //if (pSession->ByteTransferred < pSession->ByteToRead)
+            //{
+            //    memcpy(&pSession->recvBuffer[pSession->ByteTransferred], &pSession->wsaBuf.buf[pSession->ByteTransferred], pSession->ByteToRead - pSession->ByteTransferred);
+            //}
+            //else
+            //{
+            //    memcpy(&pSession->recvBuffer[pSession->ByteTransferred], pSession->wsaBuf.buf, pSession->ByteToRead);
+
+            //    if (pOut != nullptr)
+            //    {
+            //        memcpy(pOut, pSession->wsaBuf.buf, 4);
+            //    }
+
+            //    pSession->ByteTransferred = 0;
+            //    pSession->ByteToRead = 4;
+            //}
+
+            if (pOut != nullptr && pSession->ByteToRead == Bytes)
             {
-                if (Bytes == pSession->wsaBuf.len)
-                {
-                    memcpy(pOut, pSession->wsaBuf.buf, size);
-                }
+                memcpy(pOut, pSession->wsaBuf.buf, 4);
             }
-            pSession->wsaBuf.buf = pSession->recvBuffer;
-            pSession->wsaBuf.len = sizeof(pSession->recvBuffer);
+
+            
+
+
+
+
+
+            //pSession->wsaBuf.buf = pSession->recvBuffer;
+            //pSession->wsaBuf.len = sizeof(pSession->recvBuffer);
             //pSession->OverlappedEvent.hEvent = WSACreateEvent();
 
             DWORD recvLen = 0;
@@ -162,7 +184,9 @@ void Stage_Matching::Update()
                 pSession->OverlappedEvent.hEvent = WSACreateEvent();
                 pSession->eType = READ;
                 pSession->wsaBuf.buf = pSession->recvBuffer;
-                pSession->wsaBuf.len = sizeof(pSession->recvBuffer);
+                pSession->wsaBuf.len = sizeof(int);
+                pSession->ByteTransferred = 0;
+                pSession->ByteToRead = 4;
                 CreateIoCompletionPort((HANDLE)m_Socket, hCPHandle, /*Key*/(ULONG_PTR)pSession, 0); //등록할때는
 
 

@@ -23,6 +23,9 @@ struct ClientSession
     char recvBuffer[BUFSIZE] = {};
     __int32 recvSize = 0;
     __int32 sendSize = 0;
+    __int32 ByteTransferred = 0;
+    __int32 ByteToSent = 0;
+    __int32 ByteToRead = 0;
     DWORD Respones = {};
     int LateCount = 0;
 };
