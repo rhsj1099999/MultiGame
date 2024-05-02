@@ -1,30 +1,58 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="소스 파일">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include="Design">
+      <UniqueIdentifier>{32f48f9d-b7de-48b2-b8c6-1be8914c6a72}</UniqueIdentifier>
     </Filter>
-    <Filter Include="헤더 파일">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    <Filter Include="Design\01. ServerManager">
+      <UniqueIdentifier>{75a59af1-5cdf-4778-b284-0ee7addb3674}</UniqueIdentifier>
     </Filter>
-    <Filter Include="리소스 파일">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="Pre">
+      <UniqueIdentifier>{c2fb1aca-fc03-4a77-9c7c-476c1daf47ca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Design\02. Timer">
+      <UniqueIdentifier>{8dd2e616-204f-4d2d-a799-9b0b2373af8f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Design\00. MainInstance">
+      <UniqueIdentifier>{74e46699-2a82-4c56-a20c-0a4d9537530a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Design\99. Base">
+      <UniqueIdentifier>{f42b8a84-4d53-4fc8-abaf-98eb0b63f000}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ServerMain.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="MainServer.cpp">
+      <Filter>Design\01. ServerManager</Filter>
     </ClCompile>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Pre</Filter>
+    </ClCompile>
+    <ClCompile Include="Main.cpp" />
     <ClCompile Include="Timer.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>Design\02. Timer</Filter>
+    </ClCompile>
+    <ClCompile Include="MainInstance.cpp">
+      <Filter>Design\00. MainInstance</Filter>
+    </ClCompile>
+    <ClCompile Include="Base.cpp">
+      <Filter>Design\99. Base</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="MainServer.h">
+      <Filter>Design\01. ServerManager</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>Pre</Filter>
+    </ClInclude>
     <ClInclude Include="Timer.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>Design\02. Timer</Filter>
+    </ClInclude>
+    <ClInclude Include="MainInstance.h">
+      <Filter>Design\00. MainInstance</Filter>
+    </ClInclude>
+    <ClInclude Include="Base.h">
+      <Filter>Design\99. Base</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

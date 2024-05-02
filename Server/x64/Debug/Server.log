@@ -1,4 +1,4 @@
-﻿  ServerMain.cpp
-  Timer.cpp
-  코드를 생성하고 있습니다...
+﻿  MainInstance.cpp
+  MainServer.cpp
+  stdafx.cpp
   Server.vcxproj -> C:\Users\rhsj\Desktop\MultiGame\x64\Debug\Server.exe

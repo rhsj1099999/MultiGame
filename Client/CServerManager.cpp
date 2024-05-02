@@ -18,7 +18,8 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
             if (m_IOCPHandle == INVALID_HANDLE_VALUE)
                 return;
 
-            SR1_MSGBOX("GQCS Fail");
+            SR1_MSGBOX("GQCS Fail : Recieve At Client");
+            //아마도 서버가 죽거나 서버컴 랜선이 뽑혔을때
 
             continue;
         }

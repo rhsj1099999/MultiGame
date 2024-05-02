@@ -55,7 +55,7 @@ void CMainGame::Release(void)
 {
 	CObjMgr::Get_Instance()->Release();
 	CSceneMgr::Get_Instance()->Release();
-	//CServerManager::Get_Instance()->Release();
+	CServerManager::Get_Instance()->Release();
 
 	CObjMgr::Get_Instance()->Destroy_Instance();
 	CUIMgr::Get_Instance()->Destroy_Instance();

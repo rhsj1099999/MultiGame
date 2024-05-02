@@ -261,6 +261,17 @@ struct ClientSession
     int LateCount = 0;
     bool bHeaderTransferred = false;
     PREDATA pLatestHead;
+
+    enum class ClientState
+    {
+        CONNECTED,
+        WAITING,
+        PLAYING,
+        END,
+    };
+
+    ClientState eClientState = ClientState::END;
+
     ~ClientSession()
     {
         if (CQPtr != nullptr)
