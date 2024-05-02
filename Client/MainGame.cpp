@@ -7,6 +7,7 @@
 #include "UIMgr.h"
 #include "ObjMgr.h"
 #include "KeyMgr2.h"
+#include "CServerManager.h"
 
 CMainGame::CMainGame()
 {
@@ -54,11 +55,13 @@ void CMainGame::Release(void)
 {
 	CObjMgr::Get_Instance()->Release();
 	CSceneMgr::Get_Instance()->Release();
+	//CServerManager::Get_Instance()->Release();
 
 	CObjMgr::Get_Instance()->Destroy_Instance();
 	CUIMgr::Get_Instance()->Destroy_Instance();
 	CKeyMgr::Get_Instance()->Destroy_Instance();
 	CSceneMgr::Get_Instance()->Destroy_Instance();
 	CKeyMgr2::Get_Instance()->Destroy_Instance();
+	CServerManager::Get_Instance()->Destroy_Instance();
 	ReleaseDC(g_hWnd, m_DC);
 }
