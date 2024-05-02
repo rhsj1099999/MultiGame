@@ -5,16 +5,20 @@
 #include <list>
 #include <mutex>
 #include <map>
-
-
 #include <CoreLib.h>
 #pragma comment(lib, "CoreLib.lib")
-
 #include "Timer.h"
 
 using namespace std;
 
+#define SR1_MSGBOX(MESSAGE) MessageBox(0, TEXT(MESSAGE), TEXT("Fail_"), MB_OK)
+#define SR1_MSGBOX2(MESSAGE) MessageBox(0, MESSAGE, TEXT("Fail_"), MB_OK)
+
+__int32 iCurrentUser = 0;
+
+
 list<ClientSession*> liClientSessions;
+list<CMyCQ*> liClietSendQueue;
 
 void CheckResponse()
 {
@@ -36,83 +40,96 @@ void WorkerEntry_D(HANDLE hHandle, WSABUF* pOut)
             //Close Socket
             if (WSAGetLastError() == WAIT_TIMEOUT)
             {
-                int a = 10;
                 break;
             }
             continue;
         }
 
-        DWORD ResponeTime = pSession->Respones;
+        //pSession->ByteTransferred += Bytes;
+        //pSession->ByteToSent -= Bytes;
 
-        if ((Timer::GetInstance()->GetCurrTime() - pSession->Respones) > 1000)
+        //if (pSession->ByteToSent < 0)
+        //{
+        //    SR1_MSGBOX("Error : ByteToSent Under 0");
+        //}
+
+        pSession->CQPtr->Dequq_N(Bytes);
+
+        if (pSession->CQPtr->GetSize() <= 0)
         {
-            ++pSession->LateCount;
+            //다 보냈다
+            pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+            (
+                sizeof(int),
+                PREDATA::OrderType::TEST1
+            ));
+            pSession->CQPtr->Enqueqe_Instance<__int32>(iCurrentUser);
+        }
+        else
+        {
+            //다 보내지 못했다.
+            SR1_MSGBOX("Error : ByteToSent Sent Not Yet");
+            int a = 10;
         }
 
-        switch (pSession->eType)
+        pSession->wsaBuf.len = pSession->CQPtr->GetSize();
+        pSession->wsaBuf.buf = (char*)pSession->CQPtr->GetFrontPtr();
+        
+
+        DWORD recvLen = 0;
+        DWORD flag = 0;
+
+        if (WSASend((pSession)->soc, &pSession->wsaBuf, 1, &recvLen, flag, &(pSession)->OverlappedEvent, NULL) == SOCKET_ERROR)
         {
-        case READ:
-        {
-            WSABUF DataBuf;
-            DataBuf.buf = pSession->recvBuffer;
-            DataBuf.len = BUFSIZE;
-
-            DWORD recvLen = 0;
-            DWORD flag = 0;
-            WSARecv(pSession->soc, &DataBuf, 1, &recvLen, &flag, (LPOVERLAPPED)&pOverlap, NULL);
-        }
-        break;
-
-        case WRITE:
-        {
-        }
-        break;
-
-        case QUEUEWATING:
-        {
-
-
-            pSession->ByteTransferred += Bytes;
-            if (pSession->ByteTransferred < pSession->ByteToSent)
+            if (WSAGetLastError() == WSA_IO_PENDING)
             {
-                pSession->wsaBuf.buf = &(pSession->recvBuffer[pSession->ByteTransferred]);
-                pSession->wsaBuf.len = sizeof(pSession->recvBuffer - pSession->ByteTransferred);
+
             }
-            else
-            {
-                int TempCurrUser = static_cast<int>(liClientSessions.size());
-                //memset(pSession->recvBuffer, 0, sizeof(pSession->recvBuffer));
-                memcpy(pSession->recvBuffer, &TempCurrUser, sizeof(TempCurrUser));
-
-                pSession->wsaBuf.buf = pSession->recvBuffer;
-                pSession->wsaBuf.len = 4;
-                pSession->ByteTransferred = 0;
-                pSession->ByteToSent = sizeof(int);
-            }
-
-
-            //pSession->wsaBuf.buf = pSession->recvBuffer;
-            //pSession->wsaBuf.len = sizeof(pSession->recvBuffer);
-
-            DWORD recvLen = 0;
-            DWORD flag = 0;
-            WSASend((pSession)->soc, &pSession->wsaBuf, 1, &recvLen, flag, &(pSession)->OverlappedEvent, NULL);
-        }
-        break;
-
-
-        default:
-            break;
         }
     }
 }
 
+struct MainPacket
+{
+    MainPacket() = delete;
+    MainPacket(int DataSize, PREDATA::OrderType eOrderType, void* pData)
+        : Head(PREDATA(DataSize, eOrderType))
+    {
+        Data = new char[DataSize + sizeof(PREDATA)];
+        memset(Data, 0, DataSize);
+        memcpy(Data, (char*)&Head, sizeof(PREDATA));
+        memcpy(&Data[sizeof(PREDATA)], (char*)pData, DataSize);
+    }
+    ~MainPacket()
+    {
+        if (Data != nullptr)
+        {
+            delete Data;
+        }
+    }
+    PREDATA Head;
+    char* Data = nullptr;
+    int GetSize() { return (Head.iSizeStandby + sizeof(PREDATA)); }
+    char* GetBuffer() { return Data; }
+};
+
+
+enum class MainPacketType
+{
+    UserCount = 0,
+    END,
+};
 
 
 int main()
 {
     Timer* pTimer = Timer::GetInstance();
     pTimer->Init();
+
+    vector<MainPacket*> vecPacketPool;
+    vecPacketPool.resize(static_cast<int>(MainPacketType::END));
+    vecPacketPool[static_cast<int>(MainPacketType::UserCount)] = new MainPacket(sizeof(iCurrentUser), PREDATA::OrderType::TEST1, &iCurrentUser);
+
 
 
 #pragma region InitServer
@@ -214,30 +231,45 @@ int main()
         pSession->eType = QUEUEWATING;
         pSession->Respones = Timer::GetInstance()->GetCurrTime();
         pSession->LateCount = 0;
-        CreateIoCompletionPort((HANDLE)ClientSocket, hCPHandle, /*Key*/(ULONG_PTR)pSession, 0); //등록할때는
+        pSession->ByteTransferred = 0;
         liClientSessions.push_back(pSession);
+        pSession->CQPtr = new CMyCQ(64);
+        CreateIoCompletionPort((HANDLE)ClientSocket, hCPHandle, /*Key*/(ULONG_PTR)pSession, 0); //등록할때는
+
+        iCurrentUser = static_cast<__int32>(liClientSessions.size());
         cout << "Client Connected!" << endl;
 
-        int TempCurrUser = static_cast<int>(liClientSessions.size());
-        memset(pSession->recvBuffer, 0, sizeof(pSession->recvBuffer));
-        memcpy(pSession->recvBuffer, &TempCurrUser, sizeof(TempCurrUser));
+        memcpy(pSession->recvBuffer, &iCurrentUser, sizeof(iCurrentUser));
+        cout << iCurrentUser << endl;
 
         DWORD recvLen = 0;
         DWORD flag = 0;
 
-        pSession->wsaBuf.buf = pSession->recvBuffer;
-        pSession->wsaBuf.len = 4;
-        pSession->ByteTransferred = 0;
-        pSession->ByteToSent = sizeof(int);
-        if (WSASend((pSession)->soc, &pSession->wsaBuf, 1, &recvLen, flag, &(pSession)->OverlappedEvent, NULL) == SOCKET_ERROR)
-        {
-            if (WSAGetLastError() != WSA_IO_PENDING)
-            {
-                delete pSession;
-            }
-        }
+
+
+
+        pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+        (
+            sizeof(int),
+            PREDATA::OrderType::TEST1
+        ));
+        pSession->CQPtr->Enqueqe_Instance<__int32>(iCurrentUser);
+
+        int Size = pSession->CQPtr->GetSize();
+        
+        //pSession->ByteToSent = sizeof(iCurrentUser);
+        //pSession->wsaBuf.buf = pSession->recvBuffer;
+        //pSession->wsaBuf.len = pSession->ByteToSent;
+        //WSASend(pSession->soc, &pSession->wsaBuf, 1, &recvLen, flag, &pSession->OverlappedEvent, NULL);
+
+        //After Circular Queue
+        pSession->ByteToSent = pSession->CQPtr->GetSize();
+        pSession->wsaBuf.buf = pSession->CQPtr->GetBuffer();
+        pSession->wsaBuf.len = pSession->CQPtr->GetSize();
+        WSASend(pSession->soc, &pSession->wsaBuf, 1, &recvLen, flag, &pSession->OverlappedEvent, NULL);
     }
 
+    
 
     for (vector<thread>::iterator Itr = vecThreads.begin(); Itr != vecThreads.end(); ++Itr)
     {
@@ -248,7 +280,13 @@ int main()
     //    closesocket(Ss->soc);
     //    delete Ss;
     //}
+
     closesocket(socReciver);
     WSACleanup();
+    for (MainPacket* pMP : vecPacketPool)
+    {
+        delete pMP;
+    }
+    vecPacketPool.clear();
     return 0;
 }

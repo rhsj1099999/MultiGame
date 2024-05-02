@@ -52,7 +52,7 @@ void WorkerEntry_D(HANDLE hHandle, char* pOut, int size = 100)
         ClientSession* pSession = nullptr;
         LPOVERLAPPED pOverlap = nullptr;
 
-        bool bRet = GetQueuedCompletionStatus(hHandle, &Bytes, (ULONG_PTR*)&pSession, (LPOVERLAPPED*)&pOverlap, 1000);
+        bool bRet = GetQueuedCompletionStatus(hHandle, &Bytes, (ULONG_PTR*)&pSession, (LPOVERLAPPED*)&pOverlap, INFINITE);
 
         if (bRet == FALSE || Bytes == 0)
         {
@@ -60,91 +60,97 @@ void WorkerEntry_D(HANDLE hHandle, char* pOut, int size = 100)
             if (WSAGetLastError() == WAIT_TIMEOUT)
                 return;
 
-            if (WSAGetLastError() == ERROR_IO_PENDING)
-            {
-                int a = 10;
-            }
-
             continue;
         }
 
-        switch (pSession->eType)
+        pSession->CQPtr->Enqueqe_Ptr(pSession->wsaBuf.buf, Bytes); //지금 시점에서 len은 목표값이지, 결과값이 아님.
+
+        pSession->ByteTransferred += Bytes;
+        pSession->ByteToRead -= Bytes;
+
+        if (pSession->ByteToRead < 0)
         {
-        case READ:
+            SR1_MSGBOX("ERROR : ByteToRead Under 0");
+        }
+        
+        static int WhileCount = 0;
+
+        while (true)
         {
-            //pSession->ByteTransferred += Bytes;
-            //if (pSession->ByteTransferred < pSession->ByteToRead)
-            //{
-            //    memcpy(&pSession->recvBuffer[pSession->ByteTransferred], &pSession->wsaBuf.buf[pSession->ByteTransferred], pSession->ByteToRead - pSession->ByteTransferred);
-            //}
-            //else
-            //{
-            //    memcpy(&pSession->recvBuffer[pSession->ByteTransferred], pSession->wsaBuf.buf, pSession->ByteToRead);
+            ++WhileCount;
 
-            //    if (pOut != nullptr)
-            //    {
-            //        memcpy(pOut, pSession->wsaBuf.buf, 4);
-            //    }
-
-            //    pSession->ByteTransferred = 0;
-            //    pSession->ByteToRead = 4;
-            //}
-
-            if (pOut != nullptr && pSession->ByteToRead == Bytes)
+            if (WhileCount > 3)
             {
-                memcpy(pOut, pSession->wsaBuf.buf, 4);
+                SR1_MSGBOX("ERROR : ByteToRead Under 0");
             }
 
-            
+            int iCurrSize = pSession->CQPtr->GetSize();
 
+            if (iCurrSize == 0)
+            {
+                WhileCount = 0;
+                break;
+            }
+                
 
+            if (pSession->bHeaderTransferred == false)
+            {
+                if (iCurrSize < sizeof(PREDATA))
+                {
+                    WhileCount = 0;
+                    break;
+                }
+                else
+                {
+                    pSession->pLatestHead = *(PREDATA*)pSession->CQPtr->GetFrontPtr();
+                    pSession->CQPtr->Dequq_N(sizeof(PREDATA));
+                    pSession->bHeaderTransferred = true;
+                }
+            }
 
+            int DataSize = pSession->pLatestHead.iSizeStandby;
 
+            iCurrSize = pSession->CQPtr->GetSize();; //이제 헤더는 받았음
 
-            //pSession->wsaBuf.buf = pSession->recvBuffer;
-            //pSession->wsaBuf.len = sizeof(pSession->recvBuffer);
-            //pSession->OverlappedEvent.hEvent = WSACreateEvent();
+            if (iCurrSize < DataSize)
+            {
+                break; //헤더는 완성됐는데 덜받았음 마저 받아올 것
+            }
+            else
+            {
+                //넉넉하게 받음
+                pSession->bHeaderTransferred = false;
 
-            DWORD recvLen = 0;
-            DWORD flag = 0;
-            WSARecv(pSession->soc, &pSession->wsaBuf, 1, &recvLen, &flag, &pSession->OverlappedEvent, NULL);
-            //WSARecv(pSession->soc, &pSession->wsaBuf, 1, &recvLen, &flag, &pSession->OverlappedEvent, NULL);
-            //WSARecv(pSession->soc, &pSession->wsaBuf, 1, &Bytes, &flag, (LPOVERLAPPED)&pOverlap, NULL);
-            //아래껀 되고, 위에거는 안됨
+                int* UserCount = (int*)pSession->CQPtr->GetFrontPtr();
+                iTempUsers = *UserCount;
+                ExecuetionMessage(pSession->pLatestHead.eOrderType, pSession->CQPtr->GetFrontPtr(), sizeof(int));
+                pSession->CQPtr->Dequq_N(iCurrSize);
+
+                if (pSession->CQPtr->GetSize() == 0)
+                {
+                    //이제 아무것도 없으면 탈출. 스레드는 다시 대기상태로 진입
+                    WhileCount = 0;
+                    break;
+                }
+            }
         }
-        break;
 
-        case WRITE:
+        DWORD recvLen = 0;
+        DWORD flag = 0;
+
+        if (pSession->ByteToRead == 0)
         {
+            pSession->ByteTransferred = 0;
+            pSession->ByteToRead = sizeof(PREDATA) + sizeof(int);
         }
-        break;
+        pSession->wsaBuf.len = pSession->ByteToRead;
 
-        case QUEUEWATING:
+        if (WSARecv(pSession->soc, &pSession->wsaBuf, 1, &recvLen, &flag, &pSession->OverlappedEvent, NULL) == SOCKET_ERROR)
         {
-
-            //int TempCurrUser = static_cast<int>(liClientSessions.size());
-            //memset(pSession->recvBuffer, 0, sizeof(pSession->recvBuffer));
-            //memcpy(pSession->recvBuffer, &TempCurrUser, sizeof(TempCurrUser));
-
-            //pSession->wsaBuf.buf = pSession->recvBuffer;
-            //pSession->wsaBuf.len = sizeof(pSession->recvBuffer);
-
-            //DWORD recvLen = 0;
-            //DWORD flag = 0;
-
-            ////WSABUF DataBuf;
-            ////DataBuf.buf = pSession->recvBuffer;
-            ////DataBuf.len = BUFSIZE;
-
-            ////DWORD recvLen = 0;
-            ////DWORD flag = 0;
-            //WSASend((pSession)->soc, &pSession->wsaBuf, 1, &recvLen, flag, &(pSession)->OverlappedEvent, NULL);
-        }
-        break;
-
-
-        default:
-            break;
+            if (WSAGetLastError() != WSA_IO_PENDING)
+            {
+                SR1_MSGBOX("WSARecv ERROR But Not Pending");
+            }
         }
     }
 }
@@ -167,7 +173,7 @@ void Stage_Matching::Update()
 //#pragma region ClientIOCP
                 HANDLE hCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
                 m_bClientConnected = true;
-                for (int i = 0; i < 5; i++)
+                for (int i = 0; i < 1; i++)
                 {
                     m_vecWorkerThreads.push_back(thread([=]()
                         {
@@ -175,18 +181,19 @@ void Stage_Matching::Update()
                         }));
                 }
 
-                
-
-
                 ClientSession* pSession = new ClientSession;
                 pSession->soc = m_Socket;
                 pSession->OverlappedEvent = {};
                 pSession->OverlappedEvent.hEvent = WSACreateEvent();
                 pSession->eType = READ;
                 pSession->wsaBuf.buf = pSession->recvBuffer;
-                pSession->wsaBuf.len = sizeof(int);
+
                 pSession->ByteTransferred = 0;
-                pSession->ByteToRead = 4;
+                pSession->ByteToRead = sizeof(PREDATA) + sizeof(int);
+                pSession->CQPtr = new CMyCQ(64);
+                //클라이언트 측에서는 pSession->wsaBuf.len이 자신의 조건에 따라 바뀔것임
+                pSession->wsaBuf.len = sizeof(PREDATA) + sizeof(int);
+                //클라이언트 측에서는 pSession->wsaBuf.len이 자신의 조건에 따라 바뀔것임
                 CreateIoCompletionPort((HANDLE)m_Socket, hCPHandle, /*Key*/(ULONG_PTR)pSession, 0); //등록할때는
 
 
@@ -235,11 +242,7 @@ void Stage_Matching::Render(HDC hDC)
     else
     {
         int MaxUsers = 4;
-
-        memcpy(&m_iCurrUser, m_Buffer, sizeof(int));
-        
-
-        wsprintf(szBuff, L"매칭중... 인원수 = %d / %d", m_iCurrUser, MaxUsers);
+        wsprintf(szBuff, L"매칭중... 인원수 = %d / %d", iTempUsers, MaxUsers);
         TextOut(hDC, WINCX / 2, WINCY / 2, szBuff, lstrlen(szBuff));
     }
 

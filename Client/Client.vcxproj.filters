@@ -94,6 +94,9 @@
     <Filter Include="03. Scene\05. Stage_Exit">
       <UniqueIdentifier>{7ccc0a82-af13-49e2-b7fe-eb8e4502d952}</UniqueIdentifier>
     </Filter>
+    <Filter Include="02. Design\07. ServerMgr">
+      <UniqueIdentifier>{f67dc30b-d69a-4ca4-a2f2-3285001ab415}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -225,6 +228,9 @@
     <ClInclude Include="Stage_Matching.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="CServerManager.h">
+      <Filter>02. Design\07. ServerMgr</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -328,6 +334,9 @@
     </ClCompile>
     <ClCompile Include="Stage_Matching.cpp">
       <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="CServerManager.cpp">
+      <Filter>02. Design\07. ServerMgr</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

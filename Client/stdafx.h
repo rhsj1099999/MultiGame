@@ -5,6 +5,10 @@
 
 #pragma once
 
+#define SR1_MSGBOX(MESSAGE) MessageBox(0, TEXT(MESSAGE), TEXT("Fail_"), MB_OK)
+#define SR1_MSGBOX2(MESSAGE) MessageBox(0, MESSAGE, TEXT("Fail_"), MB_OK)
+#define INFLOOPCOUNT 3
+
 #define _CRTDBG_MAP_ALLOC
 #include <crtdbg.h>
 #include "targetver.h"
