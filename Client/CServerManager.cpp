@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "CServerManager.h"
+#include "SceneMgr.h"
 
 CServerManager* CServerManager::m_pInstance = nullptr;
 
@@ -82,7 +83,6 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
                 //³Ë³ËÇÏ°Ô ¹ÞÀ½
                 pSession->bHeaderTransferred = false;
 
-                int* UserCount = (int*)pSession->CQPtr->GetFrontPtr();
                 ExecuetionMessage(pSession->pLatestHead.eOrderType, pSession->CQPtr->GetFrontPtr(), sizeof(int));
                 pSession->CQPtr->Dequq_N(iCurrSize);
 
@@ -266,12 +266,27 @@ void CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
 {
 	switch (eType)
 	{
-	case PREDATA::OrderType::TEST1:
-		memcpy(&m_iCurrUser, (int*)Data, DataSize);
+	case PREDATA::OrderType::USERCOUNT:
+		memcpy(&m_iCurrUser, (int*)Data, sizeof(int));
 		break;
 	case PREDATA::OrderType::TEST2:
 		memcpy(&m_iCurrUser, (int*)Data, DataSize);
 		break;
+
+    case PREDATA::OrderType::MESSAGECHANGE:
+        memcpy(&m_pSession->wsaBuf.len, (int*)Data, DataSize);
+        break;
+
+    case PREDATA::OrderType::SCENECHANGE_TOPLAY:
+        m_iCurrUser = 1;
+        CSceneMgr::Get_Instance()->Scene_Change(SC_STAGE4);
+        break;
+
+    case PREDATA::OrderType::SCENECHANGE_TOWORLD:
+        memcpy(&m_iCurrUser, (int*)Data, DataSize);
+        CSceneMgr::Get_Instance()->Scene_Change(SC_WORLDMAP);
+        break;
+
 	case PREDATA::OrderType::END:
 		memcpy(&m_iCurrUser, (int*)Data, DataSize);
 		break;

@@ -3,8 +3,25 @@
 #define MAXTIMEOUT 2500
 #define MAXLATECOUNT 2
 
+
+
+
+class CPlayingRoom;
+
+class LockGuard
+{
+public:
+    LockGuard(mutex& _m)
+        : m(&_m) { m->lock(); }
+    ~LockGuard() { m->unlock(); }
+private:
+    mutex* m;
+};
+
+
 class CMainServer
 {
+	typedef void (CMainServer::*VFPtr)(void*);
 public:
 	static CMainServer* GetInstance();
 	static void Destroy_Instance();
@@ -15,6 +32,8 @@ public:
 
 	void Init();
 	void Tick();
+
+	void SettingNextOrder(ClientSession* pSession);
 
 public:
 	//int		Update();
@@ -30,6 +49,14 @@ private:
 	void WorkerEntry_D(HANDLE hHandle);
 	void LiveCheck();
 	void MatchingRoom();
+
+	void Lock_Queue(VFPtr pFArr[], int ArrSize, void* Args[]);
+	void Lock_Queue_Push(void* Ptr);
+	void Lock_Queue_ChangingRoom(void* Ptr);
+
+	void Lock_Session(VFPtr pFArr[], int ArrSize, void* Args[]);
+	void Lock_Session_ChangingState(void* Ptr);
+
 	//void ExecuetionMessage(PREDATA::OrderType eType, void* Data, int DataSize);
 private:
 	static CMainServer* m_pInstance;
@@ -44,6 +71,8 @@ private:
 	HANDLE m_IOCPHandle = INVALID_HANDLE_VALUE;
 
 	list<ClientSession*> m_liClientSockets;
+	queue<ClientSession*> m_queWaitingQueue;
+	list<CPlayingRoom*> m_liPlayingRooms;
 
 	/*---------------
 		Data

@@ -37,6 +37,7 @@
     <ClCompile Include="Base.cpp">
       <Filter>Design\99. Base</Filter>
     </ClCompile>
+    <ClCompile Include="PlayingRoom.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MainServer.h">
@@ -54,5 +55,6 @@
     <ClInclude Include="Base.h">
       <Filter>Design\99. Base</Filter>
     </ClInclude>
+    <ClInclude Include="PlayingRoom.h" />
   </ItemGroup>
 </Project>

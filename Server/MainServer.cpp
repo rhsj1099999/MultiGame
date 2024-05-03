@@ -1,7 +1,9 @@
 #include "stdafx.h"
 #include "MainServer.h"
 
+
 #include "Timer.h"
+#include "PlayingRoom.h"
 
 CMainServer* CMainServer::m_pInstance = nullptr;
 
@@ -103,7 +105,80 @@ void CMainServer::Tick()
 
     LiveCheck();
 
-    
+    //MatchingRoom();
+}
+
+void CMainServer::SettingNextOrder(ClientSession* pSession)
+{
+    //패킷 전송 완료시 호출될 함수.
+
+    switch (pSession->eClientState)
+    {
+    case ClientSession::ClientState::CONNECTED:
+    {
+        pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+        (
+            sizeof(int),
+            PREDATA::OrderType::USERCOUNT
+        ));
+        pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
+        pSession->eClientState = ClientSession::ClientState::WAITING;
+
+        void* Args[1] = { &pSession };
+        VFPtr Array[1] = { &CMainServer::Lock_Queue_Push};
+        Lock_Queue(Array, 1, Args);
+    }
+        break;
+
+    case ClientSession::ClientState::WAITING:
+    {
+        void* Args[1] = { &pSession };
+        VFPtr Array[1] = { &CMainServer::Lock_Queue_ChangingRoom };
+        Lock_Queue(Array, 1, Args);
+
+        if (pSession->eClientState == ClientSession::ClientState::PLAYING)
+        {
+            pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+            (
+                sizeof(int),
+                PREDATA::OrderType::SCENECHANGE_TOPLAY
+            ));
+            pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
+        }
+        else
+        {
+            pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+            (
+                sizeof(int),
+                PREDATA::OrderType::USERCOUNT
+            ));
+            pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
+        }
+
+
+    }
+        break;
+
+    case ClientSession::ClientState::SCENECHANGE_PLAY:
+    {
+        pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+        (
+            sizeof(int),
+            PREDATA::OrderType::MESSAGECHANGE
+        ));
+        pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
+    }
+        break;
+
+    case ClientSession::ClientState::PLAYING:
+        break;
+
+    case ClientSession::ClientState::END:
+        break;
+
+    default:
+        break;
+    }
 }
 
 
@@ -165,7 +240,7 @@ void CMainServer::ConnectTry()
     pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
     (
         sizeof(int),
-        PREDATA::OrderType::TEST1
+        PREDATA::OrderType::USERCOUNT
     ));
     pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
 
@@ -219,15 +294,7 @@ void CMainServer::WorkerEntry_D(HANDLE hHandle)
         pSession->Respones = CTimer::GetInstance()->GetCurrTime();
 
         if (pSession->CQPtr->GetSize() <= 0)
-        {
-            //다 보냈다
-            pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
-            (
-                sizeof(int),
-                PREDATA::OrderType::TEST1
-            ));
-            pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
-        }
+            SettingNextOrder(pSession);
 
         pSession->wsaBuf.len = pSession->CQPtr->GetSize();
         pSession->wsaBuf.buf = (char*)pSession->CQPtr->GetFrontPtr();
@@ -254,31 +321,74 @@ void CMainServer::LiveCheck()
         if (abs(static_cast<int>((*Itr)->Respones - dwCurrTime)) > MAXTIMEOUT)
         {
             ++(*Itr)->LateCount;
+
             if ((*Itr)->LateCount > MAXLATECOUNT)
             {
-                //Dead Socket
+                closesocket((*Itr)->soc);
+
+                delete (*Itr);
+
+                Itr = m_liClientSockets.erase(Itr);
+
+                m_iCurrUser = static_cast<int>(m_liClientSockets.size());
+
+                cout << "Client TimeOut. Users : " << m_iCurrUser << endl;
+
+                if (Itr == m_liClientSockets.end())
+                    break;
             }
-
-            closesocket((*Itr)->soc);
-
-            delete (*Itr);
-
-            Itr = m_liClientSockets.erase(Itr);
-
-            m_iCurrUser = static_cast<int>(m_liClientSockets.size());
-
-            cout << "Client TimeOut. Users : " << m_iCurrUser << endl;
-
-            if (Itr == m_liClientSockets.end())
-                break;
         }
-        
     }
 }
 
 void CMainServer::MatchingRoom()
 {
-    //TODO = 준비된 3명 (State = WAITING)을 뽑아 방을 만들고 보내기
 
+}
 
+void CMainServer::Lock_Session(VFPtr pFArr[], int ArrSize, void* Args[])
+{
+    mutex TempLock;
+    LockGuard G(TempLock);
+
+    for (int i = 0; i < ArrSize; ++i)
+    {
+        (this->*pFArr[i])(Args[i]);
+    }
+}
+
+void CMainServer::Lock_Queue(VFPtr pFArr[], int ArrSize, void* Args[])
+{
+    mutex TempLock;
+    LockGuard G(TempLock);
+
+    for (int i = 0; i < ArrSize; ++i)
+    {
+        (this->*pFArr[i])(Args[i]);
+    }
+}
+
+void CMainServer::Lock_Queue_Push(void* Ptr)
+{
+    ClientSession** Casted = static_cast<ClientSession**>(Ptr);
+    m_queWaitingQueue.push((*Casted));
+}
+
+void CMainServer::Lock_Queue_ChangingRoom(void* Ptr)
+{
+    if (m_queWaitingQueue.size() >= 3)
+    {
+        ClientSession* pArray[3] = { nullptr, };
+        for (int i = 0; i < 3; i++)
+        {
+            pArray[i] = m_queWaitingQueue.front();
+            pArray[i]->eClientState = ClientSession::ClientState::PLAYING;
+            m_queWaitingQueue.pop();
+        }
+        m_liPlayingRooms.push_back(new CPlayingRoom(pArray, m_liClientSockets));
+    }
+}
+
+void CMainServer::Lock_Session_ChangingState(void* Ptr)
+{
 }

@@ -49,8 +49,11 @@ struct PREDATA
 {
     enum class OrderType
     {
-        TEST1,
+        USERCOUNT,
         TEST2,
+        MESSAGECHANGE,
+        SCENECHANGE_TOPLAY,
+        SCENECHANGE_TOWORLD,
         END, //ERROR
     };
 
@@ -266,6 +269,7 @@ struct ClientSession
     {
         CONNECTED,
         WAITING,
+        SCENECHANGE_PLAY,
         PLAYING,
         END,
     };

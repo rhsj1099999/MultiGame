@@ -12,6 +12,7 @@ using namespace std;
 #include <list>
 #include <mutex>
 #include <map>
+#include <queue>
 
 
 #include <CoreLib.h>
