@@ -1,6 +1,6 @@
 #pragma once
 
-#define MAXTIMEOUT 2500
+#define MAXTIMEOUT 250000
 #define MAXLATECOUNT 2
 
 
@@ -33,7 +33,7 @@ public:
 	void Init();
 	void Tick();
 
-	void SettingNextOrder(ClientSession* pSession);
+	bool SettingNextOrder(ClientSession* pSession);
 
 public:
 	//int		Update();
@@ -46,6 +46,7 @@ public:
 
 private:
 	void ConnectTry();
+	void TickWatingClients();
 	void WorkerEntry_D(HANDLE hHandle);
 	void LiveCheck();
 	void MatchingRoom();

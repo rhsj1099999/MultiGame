@@ -2,6 +2,7 @@
 #include <WinSock2.h>
 #include <mswsock.h>
 #include <ws2tcpip.h>
+#include <mutex>
 #include <iostream>
 #pragma comment(lib, "ws2_32.lib")
 
@@ -54,6 +55,8 @@ struct PREDATA
         MESSAGECHANGE,
         SCENECHANGE_TOPLAY,
         SCENECHANGE_TOWORLD,
+        TURNOFF,
+        TURNON,
         END, //ERROR
     };
 
@@ -77,79 +80,72 @@ struct PREDATA
 
 class CMyCQ
 {
+    //class LockGuard
+    //{
+    //public:
+    //    LockGuard(mutex& _m)
+    //        : m(&_m) 
+    //    {
+    //        m->lock();
+    //    }
+    //    ~LockGuard() 
+    //    {
+    //        m->unlock();
+    //    }
+    //private:
+    //    mutex* m = nullptr;
+    //};
+
+    class LockGuard
+    {
+    public:
+        LockGuard(mutex& _m)
+            : m(&_m) {
+            while (true)
+            {
+                if (m->try_lock() == true)
+                {
+                    break;
+                }
+
+            }
+        }
+        ~LockGuard() { m->unlock(); }
+    private:
+        mutex* m;
+    };
+
 private:
     char* queue;
     int capacity;
     int front, rear;
     int Size = 0;
-
+    mutex m;
 public:
     CMyCQ() = delete;
     CMyCQ(int ByteSize);
     ~CMyCQ();
 
-    void* GetFrontPtr() { return &queue[front]; }
-    void* GetRearPtr() { return &queue[rear]; }
-
-    void* GetFrontOffsetPtr(int Offset)
-    {
-        int EndPoint = front + Offset;
-
-        if (Size - 1 < Offset)
-        {
-            return nullptr;
-        }
-
-        if (front > rear)
-        {
-            EndPoint %= capacity;
-            return &queue[EndPoint];
-        }
-        else
-        {
-            return &queue[EndPoint];
-        }
-    }
-
+    
     bool isEmpty();
     bool isFull();
     bool isFull_Add(int iSize);
     void enqueue_Int(int item);
     void Enqueqe_Ptr(void* Ptr, int memSize);
-    void Dequq_N(int iSize)
-    {
-        if (isEmpty())
-        {
-            return;
-        }
-        if (Size <= 0 || iSize > Size)
-        {
-            return;
-        }
-        front = (front + iSize) % capacity;
-        Size -= iSize;
-
-        if (front == rear)
-        {
-            front = rear = -1;
-            memset(queue, 0xff, capacity);
-            return;
-        }
-    }
-    
     int dequeue_Int();
     void Dequeqe_Size(int memSize);
     void display();
-    char* GetBuffer() { return queue; }
-
-    int GetSize() 
-    {
-        return Size;
-    }
+    void* GetFrontPtr();
+    void* GetRearPtr();
+    void* GetFrontOffsetPtr(int Offset);
+    void Dequq_N(int iSize);
+    char* GetBuffer();
+    int GetSize();
 
     template<typename T>
     void Enqueqe_Instance(T& Instance)
     {
+        LockGuard G(m);
         if (isFull() || isFull_Add(sizeof(T)))
         {
             return;
@@ -177,6 +173,7 @@ public:
     template<typename T>
     void Enqueqe_InstanceRVal(T&& Instance)
     {
+        LockGuard G(m);
         if (isFull() || isFull_Add(sizeof(T)))
         {
             return;
@@ -203,11 +200,12 @@ public:
     }
 
     template<typename T>
-    T* GetBufferT() { return (T*)queue; }
+    T* GetBufferT() { LockGuard G(m); return (T*)queue; }
 
     template<typename T>
     void DisplayAll()
     {
+        LockGuard G(m);
         int iTypeSize = sizeof(T);
 
         if (isEmpty())
@@ -267,10 +265,12 @@ struct ClientSession
 
     enum class ClientState
     {
-        CONNECTED,
         WAITING,
         SCENECHANGE_PLAY,
         PLAYING,
+        NOMESSAGE,
+        TURNON,
+        TURNOFF,
         END,
     };
 

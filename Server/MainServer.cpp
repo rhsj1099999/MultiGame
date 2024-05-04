@@ -7,6 +7,10 @@
 
 CMainServer* CMainServer::m_pInstance = nullptr;
 
+mutex TempLock;
+
+static int ChangedCount = 0;
+
 CMainServer::CMainServer()
 {
 }
@@ -83,7 +87,7 @@ void CMainServer::Init()
     if (m_IOCPHandle == INVALID_HANDLE_VALUE)
         m_IOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
 
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 2; i++)
     {
         m_vecWorkerThreads.push_back(thread([=]()
             {
@@ -105,16 +109,19 @@ void CMainServer::Tick()
 
     LiveCheck();
 
-    //MatchingRoom();
+    MatchingRoom();
+
+    for (CPlayingRoom* pRoom : m_liPlayingRooms)
+    {
+        pRoom->Tick();
+    }
 }
 
-void CMainServer::SettingNextOrder(ClientSession* pSession)
+bool CMainServer::SettingNextOrder(ClientSession* pSession)
 {
-    //패킷 전송 완료시 호출될 함수.
-
     switch (pSession->eClientState)
     {
-    case ClientSession::ClientState::CONNECTED:
+    case ClientSession::ClientState::WAITING:
     {
         pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
         (
@@ -122,40 +129,6 @@ void CMainServer::SettingNextOrder(ClientSession* pSession)
             PREDATA::OrderType::USERCOUNT
         ));
         pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
-        pSession->eClientState = ClientSession::ClientState::WAITING;
-
-        void* Args[1] = { &pSession };
-        VFPtr Array[1] = { &CMainServer::Lock_Queue_Push};
-        Lock_Queue(Array, 1, Args);
-    }
-        break;
-
-    case ClientSession::ClientState::WAITING:
-    {
-        void* Args[1] = { &pSession };
-        VFPtr Array[1] = { &CMainServer::Lock_Queue_ChangingRoom };
-        Lock_Queue(Array, 1, Args);
-
-        if (pSession->eClientState == ClientSession::ClientState::PLAYING)
-        {
-            pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
-            (
-                sizeof(int),
-                PREDATA::OrderType::SCENECHANGE_TOPLAY
-            ));
-            pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
-        }
-        else
-        {
-            pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
-            (
-                sizeof(int),
-                PREDATA::OrderType::USERCOUNT
-            ));
-            pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
-        }
-
-
     }
         break;
 
@@ -164,7 +137,7 @@ void CMainServer::SettingNextOrder(ClientSession* pSession)
         pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
         (
             sizeof(int),
-            PREDATA::OrderType::MESSAGECHANGE
+            PREDATA::OrderType::SCENECHANGE_TOPLAY
         ));
         pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
     }
@@ -173,12 +146,17 @@ void CMainServer::SettingNextOrder(ClientSession* pSession)
     case ClientSession::ClientState::PLAYING:
         break;
 
+    case ClientSession::ClientState::NOMESSAGE:
+        break;
+
     case ClientSession::ClientState::END:
         break;
 
     default:
         break;
     }
+
+    return false;
 }
 
 
@@ -224,7 +202,7 @@ void CMainServer::ConnectTry()
     pSession->Respones = CTimer::GetInstance()->GetCurrTime();
     pSession->LateCount = 0;
     pSession->ByteTransferred = 0;
-    pSession->eClientState = ClientSession::ClientState::CONNECTED;
+    pSession->eClientState = ClientSession::ClientState::WAITING;
     m_liClientSockets.push_back(pSession);
     pSession->CQPtr = new CMyCQ(64);
     CreateIoCompletionPort((HANDLE)ClientSocket, m_IOCPHandle, /*Key*/(ULONG_PTR)pSession, 0);
@@ -243,11 +221,17 @@ void CMainServer::ConnectTry()
         PREDATA::OrderType::USERCOUNT
     ));
     pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
-
+    pSession->pLatestHead = PREDATA(sizeof(int),PREDATA::OrderType::USERCOUNT);
     pSession->ByteToSent = pSession->CQPtr->GetSize();
     pSession->wsaBuf.buf = pSession->CQPtr->GetBuffer();
     pSession->wsaBuf.len = pSession->CQPtr->GetSize();
+    m_queWaitingQueue.push(pSession);
     WSASend(pSession->soc, &pSession->wsaBuf, 1, &recvLen, flag, &pSession->OverlappedEvent, NULL);
+}
+
+void CMainServer::TickWatingClients()
+{
+
 }
 
 
@@ -293,8 +277,26 @@ void CMainServer::WorkerEntry_D(HANDLE hHandle)
 
         pSession->Respones = CTimer::GetInstance()->GetCurrTime();
 
-        if (pSession->CQPtr->GetSize() <= 0)
-            SettingNextOrder(pSession);
+        //if (pSession->CQPtr->GetSize() <= 0)
+        //    SettingNextOrder(pSession);
+        ////만약 메세지를 보내지 않아도 되는상황이면 잠시 멈출것
+        ////메세지를 보내지 않아도 되는 상황 = MessageQueue가 비어있음.
+
+        if (pSession->eClientState == ClientSession::ClientState::WAITING)
+        {
+            pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+            (
+                sizeof(int),
+                PREDATA::OrderType::USERCOUNT
+            ));
+            pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
+        }
+        else if (pSession->CQPtr->GetSize() == 0)
+        {
+            continue;
+        }
+        
+            
 
         pSession->wsaBuf.len = pSession->CQPtr->GetSize();
         pSession->wsaBuf.buf = (char*)pSession->CQPtr->GetFrontPtr();
@@ -343,14 +345,27 @@ void CMainServer::LiveCheck()
 
 void CMainServer::MatchingRoom()
 {
-
+    if (m_queWaitingQueue.size() >= 3)
+    {
+        ClientSession* pArr[3] = { nullptr, };
+        for (int i = 0; i < 3; i++)
+        {
+            pArr[i] = m_queWaitingQueue.front();
+            m_queWaitingQueue.front()->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+            (
+                sizeof(int),
+                PREDATA::OrderType::SCENECHANGE_TOPLAY
+            ));
+            m_queWaitingQueue.front()->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
+            m_queWaitingQueue.front()->eClientState = ClientSession::ClientState::SCENECHANGE_PLAY;
+            m_queWaitingQueue.pop();
+        }
+        CPlayingRoom* pNewRoom = new CPlayingRoom(pArr, m_liClientSockets);
+    }
 }
 
 void CMainServer::Lock_Session(VFPtr pFArr[], int ArrSize, void* Args[])
 {
-    mutex TempLock;
-    LockGuard G(TempLock);
-
     for (int i = 0; i < ArrSize; ++i)
     {
         (this->*pFArr[i])(Args[i]);
@@ -359,13 +374,12 @@ void CMainServer::Lock_Session(VFPtr pFArr[], int ArrSize, void* Args[])
 
 void CMainServer::Lock_Queue(VFPtr pFArr[], int ArrSize, void* Args[])
 {
-    mutex TempLock;
-    LockGuard G(TempLock);
 
     for (int i = 0; i < ArrSize; ++i)
     {
         (this->*pFArr[i])(Args[i]);
     }
+
 }
 
 void CMainServer::Lock_Queue_Push(void* Ptr)
@@ -378,14 +392,11 @@ void CMainServer::Lock_Queue_ChangingRoom(void* Ptr)
 {
     if (m_queWaitingQueue.size() >= 3)
     {
-        ClientSession* pArray[3] = { nullptr, };
         for (int i = 0; i < 3; i++)
         {
-            pArray[i] = m_queWaitingQueue.front();
-            pArray[i]->eClientState = ClientSession::ClientState::PLAYING;
+            m_queWaitingQueue.front()->eClientState = ClientSession::ClientState::PLAYING;
             m_queWaitingQueue.pop();
         }
-        m_liPlayingRooms.push_back(new CPlayingRoom(pArray, m_liClientSockets));
     }
 }
 

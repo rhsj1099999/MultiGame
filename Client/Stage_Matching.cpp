@@ -24,16 +24,10 @@ void Stage_Matching::Initialize()
 
 void Stage_Matching::Update()
 {
-
 }
 
 void Stage_Matching::Late_Update()
 {
-   ////SceneChange
-   // if (m_bSceneChangeeTrigger)
-   // {
-   //     CSceneMgr::Get_Instance()->Scene_Change(SC_WORLDMAP);
-   // }
 }
 
 void Stage_Matching::Render(HDC hDC)
