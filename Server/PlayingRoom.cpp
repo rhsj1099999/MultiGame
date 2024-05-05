@@ -20,25 +20,23 @@ void CPlayingRoom::Init(ClientSession* pThreeSession[], list<ClientSession*>& pR
 	m_arrClients[1] = pThreeSession[1];
 	m_arrClients[2] = pThreeSession[2];
 
-	m_iPlayingOrder = rand() % CLIENT1;
+	m_iPlayingOrder = rand() % CLIENT3;
 
 	m_arrClients[m_iPlayingOrder]->eClientState = ClientSession::ClientState::TURNON;
 
     int Dummy = 0;
 
-    for (int i = 0; i < CLIENT1; i++)
+    for (int i = 0; i < CLIENT3; i++)
     {
-
         PREDATA::OrderType TempOrder = (i == m_iPlayingOrder) ? PREDATA::OrderType::TURNON : PREDATA::OrderType::TURNOFF;
 
         ClientSession* pSession = m_arrClients[i];
 
         CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
 
-        //if (TempOrder != PREDATA::OrderType::TURNON)
-        //{
-        //    SR1_MSGBOX("NotOrder");
-        //}
+        bool bTempMessageSend = false;
+        if (pSession->CQPtr->GetSize() == 0)
+            bTempMessageSend = true;
 
         pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
         (
@@ -47,19 +45,20 @@ void CPlayingRoom::Init(ClientSession* pThreeSession[], list<ClientSession*>& pR
         ));
         pSession->CQPtr->Enqueqe_Instance<__int32>(Dummy);
 
-        //DWORD Sendlen = {};
-        //DWORD Flag = {};
-        ////pSession->Lock_WSASend
-        ////(
-        ////    &pSession->wsaBuf_Send, 1, &Sendlen, Flag, &pSession->Overlapped_Send, NULL
-        ////);
-        //if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &Sendlen, Flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
-        //{
-        //    if (WSAGetLastError() != WSA_IO_PENDING)
-        //    {
-        //        closesocket(pSession->soc);
-        //    }
-        //}
+        if (bTempMessageSend == true)
+        {
+            DWORD recvLen = 0;
+            DWORD flag = 0;
+            pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
+            pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
+            if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
+            {
+                if (WSAGetLastError() != WSA_IO_PENDING)
+                {
+                    closesocket(pSession->soc);
+                }
+            }
+        }
     }
 }
 

@@ -230,9 +230,6 @@ void CMainServer::ConnectTry()
 
     memcpy(pSession->recvBuffer, &m_iCurrUser, sizeof(m_iCurrUser));
     cout << "Client Connected Users : " << m_iCurrUser << endl;
-
-
-
     
 
     CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
@@ -291,15 +288,15 @@ void CMainServer::LiveCheck()
 
 void CMainServer::MatchingRoom()
 {
-    if (m_queWaitingQueue.size() >= CLIENT1)
+    if (m_queWaitingQueue.size() >= CLIENT3)
     {
         Sleep(1000);
 
         CPlayingRoom* pNewRoom = new CPlayingRoom();
 
-        ClientSession* pArr[CLIENT1] = { nullptr, };
+        ClientSession* pArr[CLIENT3] = { nullptr, };
 
-        for (int i = 0; i < CLIENT1; i++)
+        for (int i = 0; i < CLIENT3; i++)
         {
             ClientSession* pSession = m_queWaitingQueue.front();
 
@@ -308,7 +305,10 @@ void CMainServer::MatchingRoom()
             pSession->PlayingRoomPtr = pNewRoom;
 
             CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
-
+            
+            bool bTempMessageSend = false;
+            if (pSession->CQPtr->GetSize() == 0)
+                bTempMessageSend = true;
 
             m_queWaitingQueue.front()->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
             (
@@ -316,6 +316,22 @@ void CMainServer::MatchingRoom()
                 PREDATA::OrderType::SCENECHANGE_TOPLAY
             ));
             m_queWaitingQueue.front()->CQPtr->Enqueqe_Instance<int>(m_iCurrUser);
+
+            if (bTempMessageSend == true)
+            {
+                DWORD recvLen = 0;
+                DWORD flag = 0;
+                pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
+                pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
+                if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
+                {
+                    if (WSAGetLastError() != WSA_IO_PENDING)
+                    {
+                        closesocket(pSession->soc);
+                    }
+                }
+            }
+
 
             m_queWaitingQueue.front()->eClientState = ClientSession::ClientState::SCENECHANGE_PLAY;
             m_queWaitingQueue.pop();
