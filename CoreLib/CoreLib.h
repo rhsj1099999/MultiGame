@@ -8,6 +8,9 @@
 
 using namespace std;
 
+#define CLIENT3 3
+#define CLIENT1 1
+
 #define BUF64 64
 #define BUF128 128
 #define BUF256 256
@@ -86,14 +89,16 @@ public:
     {
     public:
         LockGuard(mutex& _m)
-            : m(&_m) 
+            : m(&_m)
         {
             m->lock();
         }
-        ~LockGuard() 
+        ~LockGuard()
         {
             m->unlock();
         }
+    public:
+        void ForcedUnlock() { m->unlock(); }
     private:
         mutex* m = nullptr;
     };
@@ -103,6 +108,7 @@ private:
     int capacity;
     int front, rear;
     int Size = 0;
+    int m_iMessageCount = 0;
     mutex m;
 public:
     CMyCQ() = delete;
@@ -111,12 +117,11 @@ public:
 
     mutex& GetMutex() { return m; }
 
-    
+
     bool isEmpty();
     bool isFull();
     bool isFull_Add(int iSize);
     void enqueue_Int(int item);
-    void Enqueqe_Ptr(void* Ptr, int memSize);
     int dequeue_Int();
     void Dequeqe_Size(int memSize);
     void display();
@@ -127,10 +132,13 @@ public:
     char* GetBuffer();
     int GetSize();
 
+    void Enqueqe_Ptr(void* Ptr, int memSize);
+
     template<typename T>
     void Enqueqe_Instance(T& Instance)
     {
-        
+        bool bMessageReady = false;
+
         if (isFull() || isFull_Add(sizeof(T)))
         {
             return;
@@ -138,6 +146,7 @@ public:
         else if (isEmpty())
         {
             front = rear = 0;
+            bMessageReady = true;
         }
 
         int spaceToEnd = capacity - rear - 1;
@@ -158,7 +167,7 @@ public:
     template<typename T>
     void Enqueqe_InstanceRVal(T&& Instance)
     {
-        
+        bool bMessageReady = false;
         if (isFull() || isFull_Add(sizeof(T)))
         {
             return;
@@ -166,6 +175,8 @@ public:
         else if (isEmpty())
         {
             front = rear = 0;
+            //패킷을 넣는 순간에 비어있었다면 자고있을 스레드 = 누구도 Send를 걸지 않았고, GQCS에 걸려있을것
+            bMessageReady = true;
         }
 
         int spaceToEnd = capacity - rear - 1;
@@ -179,18 +190,17 @@ public:
             memcpy(&queue[rear], &Instance, sizeof(T));
         }
 
-        
+
         rear = (rear + sizeof(T)) % capacity;
         Size += sizeof(T);
     }
 
     template<typename T>
-    T* GetBufferT() {  return (T*)queue; }
+    T* GetBufferT() { return (T*)queue; }
 
     template<typename T>
     void DisplayAll()
     {
-        
         int iTypeSize = sizeof(T);
 
         if (isEmpty())
@@ -303,5 +313,8 @@ public:
         return Ret;
     }
 };
+
+
+
 
 void WorkerEntry(HANDLE hHandle, WSABUF* pOut);

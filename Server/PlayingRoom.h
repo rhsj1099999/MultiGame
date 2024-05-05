@@ -12,7 +12,7 @@ public:
 private:
 	float m_fRotated = 0.0f;
 	list<int> m_Wholes;
-	ClientSession* m_arrClients[1] = { nullptr, };
+	ClientSession* m_arrClients[CLIENT1] = { nullptr, };
 	int m_iPlayingOrder = 0;
 
 

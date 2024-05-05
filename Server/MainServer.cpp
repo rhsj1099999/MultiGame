@@ -87,7 +87,7 @@ void CMainServer::Init()
     if (m_IOCPHandle == INVALID_HANDLE_VALUE)
         m_IOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
 
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 1; i++)
     {
         m_vecWorkerThreads.push_back(thread([=]()
             {
@@ -119,60 +119,60 @@ void CMainServer::Tick()
 
 bool CMainServer::SettingNextOrder(ClientSession* pSession)
 {
-    switch (pSession->eClientState)
-    {
-    case ClientSession::ClientState::WAITING:
-    {
-        pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
-        (
-            sizeof(int),
-            PREDATA::OrderType::USERCOUNT
-        ));
-        pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
-    }
-        break;
+    //switch (pSession->eClientState)
+    //{
+    //case ClientSession::ClientState::WAITING:
+    //{
+    //    pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+    //    (
+    //        sizeof(int),
+    //        PREDATA::OrderType::USERCOUNT
+    //    ));
+    //    pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
+    //}
+    //    break;
 
-    case ClientSession::ClientState::SCENECHANGE_PLAY:
-    {
-        pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
-        (
-            sizeof(int),
-            PREDATA::OrderType::SCENECHANGE_TOPLAY
-        ));
-        pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
-    }
-        break;
+    //case ClientSession::ClientState::SCENECHANGE_PLAY:
+    //{
+    //    pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+    //    (
+    //        sizeof(int),
+    //        PREDATA::OrderType::SCENECHANGE_TOPLAY
+    //    ));
+    //    pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
+    //}
+    //    break;
 
-    case ClientSession::ClientState::PLAYING:
-        break;
+    //case ClientSession::ClientState::PLAYING:
+    //    break;
 
-    case ClientSession::ClientState::NOMESSAGE:
-        break;
+    //case ClientSession::ClientState::NOMESSAGE:
+    //    break;
 
-    case ClientSession::ClientState::TURNON:
-        pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
-        (
-            sizeof(int),
-            PREDATA::OrderType::TURNON
-        ));
-        pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
-        break;
+    //case ClientSession::ClientState::TURNON:
+    //    pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+    //    (
+    //        sizeof(int),
+    //        PREDATA::OrderType::TURNON
+    //    ));
+    //    pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
+    //    break;
 
-    case ClientSession::ClientState::TURNOFF:
-        pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
-        (
-            sizeof(int),
-            PREDATA::OrderType::TURNON
-        ));
-        pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
-        break;
+    //case ClientSession::ClientState::TURNOFF:
+    //    pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+    //    (
+    //        sizeof(int),
+    //        PREDATA::OrderType::TURNON
+    //    ));
+    //    pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
+    //    break;
 
-    case ClientSession::ClientState::END:
-        break;
+    //case ClientSession::ClientState::END:
+    //    break;
 
-    default:
-        break;
-    }
+    //default:
+    //    break;
+    //}
 
     return false;
 }
@@ -231,8 +231,7 @@ void CMainServer::ConnectTry()
     memcpy(pSession->recvBuffer, &m_iCurrUser, sizeof(m_iCurrUser));
     cout << "Client Connected Users : " << m_iCurrUser << endl;
 
-    DWORD recvLen = 0;
-    DWORD flag = 0;
+
 
     
 
@@ -243,11 +242,14 @@ void CMainServer::ConnectTry()
         PREDATA::OrderType::USERCOUNT
     ));
     pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
+
     pSession->pLatestHead = PREDATA(sizeof(int),PREDATA::OrderType::USERCOUNT);
     pSession->ByteToSent = pSession->CQPtr->GetSize();
     pSession->wsaBuf_Send.buf = pSession->CQPtr->GetBuffer();
     pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
-    
+
+    DWORD recvLen = 0;
+    DWORD flag = 0;
     WSASend(pSession->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &pSession->Overlapped_Send, NULL);
     WSARecv(pSession->soc, &pSession->wsaBuf_Recv, 1, &recvLen, &flag, &pSession->Overlapped_Recv, NULL);
 }
@@ -289,13 +291,15 @@ void CMainServer::LiveCheck()
 
 void CMainServer::MatchingRoom()
 {
-    if (m_queWaitingQueue.size() >= 1)
+    if (m_queWaitingQueue.size() >= CLIENT1)
     {
+        Sleep(1000);
+
         CPlayingRoom* pNewRoom = new CPlayingRoom();
 
-        ClientSession* pArr[1] = { nullptr, };
+        ClientSession* pArr[CLIENT1] = { nullptr, };
 
-        for (int i = 0; i < 1; i++)
+        for (int i = 0; i < CLIENT1; i++)
         {
             ClientSession* pSession = m_queWaitingQueue.front();
 
@@ -305,19 +309,13 @@ void CMainServer::MatchingRoom()
 
             CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
 
+
             m_queWaitingQueue.front()->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
             (
                 sizeof(int),
                 PREDATA::OrderType::SCENECHANGE_TOPLAY
             ));
             m_queWaitingQueue.front()->CQPtr->Enqueqe_Instance<int>(m_iCurrUser);
-
-            DWORD Sendlen = {};
-            DWORD Flag = {};
-            m_queWaitingQueue.front()->Lock_WSASend
-            (
-                &pSession->wsaBuf_Send, 1, &Sendlen, Flag, &pSession->Overlapped_Send, NULL
-            );
 
             m_queWaitingQueue.front()->eClientState = ClientSession::ClientState::SCENECHANGE_PLAY;
             m_queWaitingQueue.pop();
@@ -396,37 +394,18 @@ void CMainServer::WorkerEntry_D(HANDLE hHandle)
             continue;
         }
 
-        CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
-
         if (pOverlap == &pSession->Overlapped_Send)
         {
 #pragma region Send
-            pSession->CQPtr->Dequq_N(Bytes);
 
             pSession->Respones = CTimer::GetInstance()->GetCurrTime();
 
-            //if (pSession->CQPtr->GetSize() == 0)
-            //{
-            //    if (pSession->eClientState == ClientSession::ClientState::WAITING)
-            //    {
-            //        pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
-            //        (
-            //            sizeof(int),
-            //            PREDATA::OrderType::USERCOUNT
-            //        ));
-            //        pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
-            //    }
-            //    else
-            //    {
-            //        continue; //메세지 없으면 자러갈꺼임
-            //    }
-            //    //SettingNextOrder(pSession);
-            //}
+            CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
+
+            pSession->CQPtr->Dequq_N(Bytes);
 
             if (pSession->CQPtr->GetSize() == 0)
-            {
                 continue; //메세지 없으면 자러갈꺼임
-            }
 
             pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
             pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
@@ -434,14 +413,14 @@ void CMainServer::WorkerEntry_D(HANDLE hHandle)
             DWORD recvLen = 0;
             DWORD flag = 0;
 
-            pSession->Lock_WSASend(&pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL);
-            //if (WSASend((pSession)->soc, &pSession->wsaBuf, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
-            //{
-            //    if (WSAGetLastError() != WSA_IO_PENDING)
-            //    {
-            //        closesocket(pSession->soc);
-            //    }
-            //}
+            //pSession->Lock_WSASend(&pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL);
+            if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
+            {
+                if (WSAGetLastError() != WSA_IO_PENDING)
+                {
+                    closesocket(pSession->soc);
+                }
+            }
 #pragma endregion Send
         }
         else

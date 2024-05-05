@@ -5,6 +5,8 @@
 
 CServerManager* CServerManager::m_pInstance = nullptr;
 
+static bool SceneChanged = false;
+
 void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
 {
     while (true)
@@ -17,92 +19,100 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
 
         if (bRet == FALSE || Bytes == 0)
         {
+            return;
+
             if (m_IOCPHandle == INVALID_HANDLE_VALUE)
                 return;
+
+            if (Bytes == 0)
+                SR1_MSGBOX("ERROR : GQCS Read 0 Bytes");
 
             SR1_MSGBOX("GQCS Fail : Recieve At Client");
             //아마도 서버가 죽거나 서버컴 랜선이 뽑혔을때
 
+            
+
             continue;
         }
 
-        pSession->CQPtr->Enqueqe_Ptr(pSession->wsaBuf_Recv.buf, Bytes); //지금 시점에서 len은 목표값이지, 결과값이 아님.
-
-        pSession->ByteTransferred += Bytes;
-        pSession->ByteToRead -= Bytes;
-
-        if (pSession->ByteToRead < 0)
+        if (pOverlap == &pSession->Overlapped_Recv)
         {
-            SR1_MSGBOX("ERROR : ByteToRead Under 0");
-        }
+#pragma region Read
 
-        while (true)
-        {
-            int iCurrSize = pSession->CQPtr->GetSize();
-
-            if (iCurrSize == 0)
+            if (SceneChanged == true)
             {
-                break;
+                int a = 10;
             }
 
+            pSession->ByteTransferred += Bytes;
+            pSession->ByteToRead -= Bytes;
 
-            if (pSession->bHeaderTransferred == false)
+
+            if (pSession->ByteToRead < 0)
+                SR1_MSGBOX("ERROR : ByteToRead Under 0");
+
+            while (true)
             {
-                if (iCurrSize < sizeof(PREDATA))
+                if (pSession->bHeaderTransferred == false)
                 {
-                    break;
+                    //헤더가 캐싱된적이 없다
+                    if (pSession->ByteTransferred < sizeof(PREDATA))
+                    {
+                        //근데 헤더를 완성할 수 없다
+                        pSession->wsaBuf_Recv.buf = &pSession->recvBuffer[pSession->ByteTransferred];
+                        pSession->wsaBuf_Recv.len = pSession->ByteToRead;
+                        break;
+                    }
+                    else
+                    {
+                        //헤더를 캐싱할 수 있다.
+                        pSession->bHeaderTransferred = true;
+                        pSession->pLatestHead = *((PREDATA*)pSession->recvBuffer);
+                        pSession->ByteTransferred = 0;
+                        pSession->ByteToRead = pSession->pLatestHead.iSizeStandby;
+                        pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
+                        pSession->wsaBuf_Recv.len = pSession->pLatestHead.iSizeStandby;
+                        break;
+                    }
                 }
                 else
                 {
-                    pSession->pLatestHead = *(PREDATA*)pSession->CQPtr->GetFrontPtr();
-                    pSession->CQPtr->Dequq_N(sizeof(PREDATA));
-                    pSession->bHeaderTransferred = true;
+                    //헤더를 캐싱했다
+                    if (pSession->ByteTransferred < pSession->ByteToRead)
+                    {
+                        //데이터를 다 못읽었다.
+                        pSession->wsaBuf_Recv.buf = &pSession->recvBuffer[pSession->ByteTransferred];
+                        pSession->wsaBuf_Recv.len = pSession->ByteToRead;
+                        break;
+                    }
+                    else
+                    {
+                        //데이터를 다 읽었다.
+                        ExecuetionMessage
+                        (
+                            pSession->pLatestHead.eOrderType,
+                            pSession->recvBuffer,
+                            pSession->pLatestHead.iSizeStandby
+                        );
+                        pSession->bHeaderTransferred = false;
+                        pSession->ByteTransferred = 0;
+                        pSession->ByteToRead = sizeof(PREDATA);
+                        pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
+                        pSession->wsaBuf_Recv.len = sizeof(PREDATA);
+                        break;
+                    }
                 }
             }
+            DWORD recvLen = 0;
+            DWORD flag = 0;
 
-            int DataSize = pSession->pLatestHead.iSizeStandby;
-
-            iCurrSize = pSession->CQPtr->GetSize(); //이제 헤더는 받았음
-
-            if (iCurrSize < DataSize)
+            if (pSession->ByteToRead <= 0)
             {
-                break; //헤더는 완성됐는데 덜받았음 마저 받아올 것
+                wchar_t Log[32] = {};
+                wsprintf(Log, L"ByteToRead Error, %d", pSession->ByteToRead);
+                MessageBox(0, Log, TEXT("Fail_"), MB_OK);
             }
-            else
-            {
-                //넉넉하게 받음
-                pSession->bHeaderTransferred = false;
 
-                bool Ret = ExecuetionMessage(pSession->pLatestHead.eOrderType, pSession->CQPtr->GetFrontPtr(), sizeof(int));
-
-                if (Ret == true)
-                {
-                    wchar_t TempMessage[64] = {};
-                    wsprintf(TempMessage, L"Error, ByteTo Read = %d", pSession->ByteToRead);
-                    MessageBox(0, TempMessage, TEXT("Fail_"), MB_OK);
-                }
-
-                pSession->CQPtr->Dequq_N(iCurrSize);
-
-                if (pSession->CQPtr->GetSize() == 0)
-                {
-                    break;
-                }
-            }
-        }
-
-        DWORD recvLen = 0;
-        DWORD flag = 0;
-
-        if (pSession->ByteToRead == 0)
-        {
-            pSession->ByteTransferred = 0;
-            pSession->ByteToRead = sizeof(PREDATA) + sizeof(int);
-        }
-        pSession->wsaBuf_Recv.len = pSession->ByteToRead;
-
-        if (pOverlap == &pSession->Overlapped_Recv) //Recv
-        {
             if (WSARecv(pSession->soc, &pSession->wsaBuf_Recv, 1, &recvLen, &flag, &pSession->Overlapped_Recv, NULL) == SOCKET_ERROR)
             {
                 if (WSAGetLastError() != WSA_IO_PENDING)
@@ -110,9 +120,13 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
                     closesocket(m_Socket);
                 }
             }
+#pragma endregion Read
         }
         else
         {
+#pragma region Send
+            DWORD recvLen = 0;
+            DWORD flag = 0;
             if (WSASend(pSession->soc, &pSession->wsaBuf_Recv, 1, &recvLen, flag, &pSession->Overlapped_Send, NULL) == SOCKET_ERROR)
             {
                 if (WSAGetLastError() != WSA_IO_PENDING)
@@ -120,6 +134,7 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
                     closesocket(m_Socket);
                 }
             }
+#pragma endregion Send
         }
     }
 }
@@ -234,10 +249,10 @@ void CServerManager::InitServer()
 
 
                 pSession->ByteTransferred = 0;
-                pSession->ByteToRead = sizeof(PREDATA) + sizeof(int);
+                pSession->ByteToRead = sizeof(PREDATA);
                 pSession->CQPtr = new CMyCQ(64);
                 pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
-                pSession->wsaBuf_Recv.len = sizeof(PREDATA) + sizeof(int);
+                pSession->wsaBuf_Recv.len = sizeof(PREDATA);
                 CreateIoCompletionPort((HANDLE)m_Socket, m_IOCPHandle, /*Key*/(ULONG_PTR)pSession, 0); //등록할때는
 
 
@@ -279,16 +294,24 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
         break;
 
     case PREDATA::OrderType::SCENECHANGE_TOPLAY:
+    {
         m_iCurrUser = 1;
         CSceneMgr::Get_Instance()->Scene_Change(SC_STAGE4, true);
+        int a = 10;
+        SceneChanged = true;
+    }
+
         break;
 
     case PREDATA::OrderType::SCENECHANGE_TOWORLD:
-        memcpy(&m_iCurrUser, (int*)Data, DataSize);
         CSceneMgr::Get_Instance()->Scene_Change(SC_WORLDMAP);
         break;
 
     case PREDATA::OrderType::TURNON:
+        if (SceneChanged == false)
+        {
+            SR1_MSGBOX("TurnOnFirst");
+        }
         m_bCanMove = true;
         break;
 

@@ -62,7 +62,8 @@ void CMyCQ::enqueue_Int(int item)
 
 void CMyCQ::Enqueqe_Ptr(void* Ptr, int memSize)
 {
-    
+    bool bMessageReady = false;
+
     if (isFull() || isFull_Add(sizeof(memSize)))
     {
         return;
@@ -70,6 +71,7 @@ void CMyCQ::Enqueqe_Ptr(void* Ptr, int memSize)
     else if (isEmpty())
     {
         front = rear = 0;
+        bMessageReady = true;
     }
 
     int spaceToEnd = capacity - rear - 1;
@@ -210,7 +212,6 @@ char* CMyCQ::GetBuffer() { return queue; }
 
 int CMyCQ::GetSize()
 {
-    
     return Size;
 }
 
