@@ -9,7 +9,7 @@ private:
 	~CSceneMgr();
 
 public:
-	void		Scene_Change(SCENEID eID);
+	void		Scene_Change(SCENEID eID, bool bServerMode = false);
 	void		Update(void);
 	void		Late_Update(void);
 	void		Render(HDC hDC);

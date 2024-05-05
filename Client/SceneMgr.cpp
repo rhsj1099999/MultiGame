@@ -31,7 +31,7 @@ void CSceneMgr::Restart_Scene()
 		m_IsChange = true;
 	}
 }
-void CSceneMgr::Scene_Change(SCENEID eID)
+void CSceneMgr::Scene_Change(SCENEID eID, bool bServerMode)
 {
 	m_eCurScene = eID;
 
@@ -65,8 +65,13 @@ void CSceneMgr::Scene_Change(SCENEID eID)
 		}
 
 		if (nullptr != m_pScene)
+		{
+			if (bServerMode == true)
+			{
+				m_pScene->SetServerMode(bServerMode);
+			}
 			m_pScene->Initialize();
-
+		}
 		m_ePreScene = m_eCurScene;
 	}
 

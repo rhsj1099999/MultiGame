@@ -29,6 +29,7 @@ public:
 	virtual void		OnTrigger();
 	virtual void		Cal_WorldMatrix()	PURE;
 	virtual void		OnCollision(CObj* _other);
+	virtual void		SetServerMode(bool bMode) { m_bIsServerMode = bMode; }
 
 protected:
 	INFO			m_tInfo;
@@ -38,5 +39,7 @@ protected:
 	bool			m_bDead;		// °´Ã¼ »ç¸Á ¿©ºÎ
 
 	OBJID			m_eObjID;
+
+	bool			m_bIsServerMode = false;
 };
 

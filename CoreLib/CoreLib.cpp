@@ -15,25 +15,25 @@ CMyCQ::~CMyCQ()
 
 bool CMyCQ::isEmpty()
 {
-    LockGuard G(m);
+    
     return front == -1;
 }
 
 bool CMyCQ::isFull()
 {
-    LockGuard G(m);
+    
     return Size == capacity;
 }
 
 bool CMyCQ::isFull_Add(int iSize)
 {
-    LockGuard G(m);
+    
     return (Size + iSize) >= capacity;
 }
 
 void CMyCQ::enqueue_Int(int item)
 {
-    LockGuard G(m);
+    
     if (isFull() || isFull_Add(sizeof(int)))
     {
         return;
@@ -62,7 +62,7 @@ void CMyCQ::enqueue_Int(int item)
 
 void CMyCQ::Enqueqe_Ptr(void* Ptr, int memSize)
 {
-    LockGuard G(m);
+    
     if (isFull() || isFull_Add(sizeof(memSize)))
     {
         return;
@@ -89,7 +89,7 @@ void CMyCQ::Enqueqe_Ptr(void* Ptr, int memSize)
 
 int CMyCQ::dequeue_Int()
 {
-    LockGuard G(m);
+    
     if (isEmpty())
     {
         return -1;
@@ -110,7 +110,7 @@ int CMyCQ::dequeue_Int()
 
 void CMyCQ::Dequeqe_Size(int memSize)
 {
-    LockGuard G(m);
+    
     if (isEmpty())
     {
         return;
@@ -129,7 +129,7 @@ void CMyCQ::Dequeqe_Size(int memSize)
 
 void CMyCQ::display()
 {
-    LockGuard G(m);
+    
     if (isEmpty())
     {
         cout << "Queue is empty.\n";
@@ -159,13 +159,13 @@ void CMyCQ::display()
     cout << endl;
 }
 
-void* CMyCQ::GetFrontPtr() { LockGuard G(m); return &queue[front]; }
+void* CMyCQ::GetFrontPtr() {  return &queue[front]; }
 
-void* CMyCQ::GetRearPtr() { LockGuard G(m); return &queue[rear]; }
+void* CMyCQ::GetRearPtr() {  return &queue[rear]; }
 
 void* CMyCQ::GetFrontOffsetPtr(int Offset)
 {
-    LockGuard G(m);
+    
     int EndPoint = front + Offset;
 
     if (Size - 1 < Offset)
@@ -186,7 +186,7 @@ void* CMyCQ::GetFrontOffsetPtr(int Offset)
 
 void CMyCQ::Dequq_N(int iSize)
 {
-    LockGuard G(m);
+    
     if (isEmpty())
     {
         return;
@@ -210,7 +210,7 @@ char* CMyCQ::GetBuffer() { return queue; }
 
 int CMyCQ::GetSize()
 {
-    LockGuard G(m);
+    
     return Size;
 }
 

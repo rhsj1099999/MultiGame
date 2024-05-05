@@ -15,6 +15,8 @@ public:
 
 	bool GetClientConnected() { return m_bClientConnected; }
 	int GetServerUser() { return m_iCurrUser; }
+	float GetCurrentAngle() {return m_fCurrAngle;}
+	void SetCurrentAngle(float fAngle) { m_fCurrAngle = fAngle; }
 
 public:
 
@@ -36,9 +38,11 @@ public:
 			m_pInstance = nullptr;
 		}
 	}
+	bool GetMyTurn() { return m_bCanMove; }
 private:
 	void WorkerEntry_D(HANDLE hHandle, char* pOut, int size = 100);
-	void ExecuetionMessage(PREDATA::OrderType eType, void* Data, int DataSize);
+	bool ExecuetionMessage(PREDATA::OrderType eType, void* Data, int DataSize);
+
 private:
 	static CServerManager* m_pInstance;
 	/*---------------
@@ -56,6 +60,8 @@ private:
 	---------------*/
 	bool m_bClientConnected = false;
 	int m_iCurrUser = 1; //At Least Me
+	bool m_bCanMove = false;
+	float m_fCurrAngle = 0.0;
 
 };
 

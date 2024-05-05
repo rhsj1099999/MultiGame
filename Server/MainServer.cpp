@@ -111,10 +111,10 @@ void CMainServer::Tick()
 
     MatchingRoom();
 
-    for (CPlayingRoom* pRoom : m_liPlayingRooms)
-    {
-        pRoom->Tick();
-    }
+    //for (CPlayingRoom* pRoom : m_liPlayingRooms)
+    //{
+    //    pRoom->Tick();
+    //}
 }
 
 bool CMainServer::SettingNextOrder(ClientSession* pSession)
@@ -147,6 +147,24 @@ bool CMainServer::SettingNextOrder(ClientSession* pSession)
         break;
 
     case ClientSession::ClientState::NOMESSAGE:
+        break;
+
+    case ClientSession::ClientState::TURNON:
+        pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+        (
+            sizeof(int),
+            PREDATA::OrderType::TURNON
+        ));
+        pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
+        break;
+
+    case ClientSession::ClientState::TURNOFF:
+        pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+        (
+            sizeof(int),
+            PREDATA::OrderType::TURNON
+        ));
+        pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
         break;
 
     case ClientSession::ClientState::END:
@@ -196,8 +214,8 @@ void CMainServer::ConnectTry()
 
     ClientSession* pSession = new ClientSession;
     pSession->soc = ClientSocket;
-    pSession->OverlappedEvent = {};
-    pSession->OverlappedEvent.hEvent = WSACreateEvent();
+    pSession->Overlapped_Send = {};
+    pSession->Overlapped_Recv = {};
     pSession->eType = QUEUEWATING;
     pSession->Respones = CTimer::GetInstance()->GetCurrTime();
     pSession->LateCount = 0;
@@ -205,6 +223,7 @@ void CMainServer::ConnectTry()
     pSession->eClientState = ClientSession::ClientState::WAITING;
     m_liClientSockets.push_back(pSession);
     pSession->CQPtr = new CMyCQ(64);
+    m_queWaitingQueue.push(pSession);
     CreateIoCompletionPort((HANDLE)ClientSocket, m_IOCPHandle, /*Key*/(ULONG_PTR)pSession, 0);
 
     m_iCurrUser = static_cast<__int32>(m_liClientSockets.size());
@@ -215,6 +234,9 @@ void CMainServer::ConnectTry()
     DWORD recvLen = 0;
     DWORD flag = 0;
 
+    
+
+    CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
     pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
     (
         sizeof(int),
@@ -223,10 +245,11 @@ void CMainServer::ConnectTry()
     pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
     pSession->pLatestHead = PREDATA(sizeof(int),PREDATA::OrderType::USERCOUNT);
     pSession->ByteToSent = pSession->CQPtr->GetSize();
-    pSession->wsaBuf.buf = pSession->CQPtr->GetBuffer();
-    pSession->wsaBuf.len = pSession->CQPtr->GetSize();
-    m_queWaitingQueue.push(pSession);
-    WSASend(pSession->soc, &pSession->wsaBuf, 1, &recvLen, flag, &pSession->OverlappedEvent, NULL);
+    pSession->wsaBuf_Send.buf = pSession->CQPtr->GetBuffer();
+    pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
+    
+    WSASend(pSession->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &pSession->Overlapped_Send, NULL);
+    WSARecv(pSession->soc, &pSession->wsaBuf_Recv, 1, &recvLen, &flag, &pSession->Overlapped_Recv, NULL);
 }
 
 void CMainServer::TickWatingClients()
@@ -234,85 +257,6 @@ void CMainServer::TickWatingClients()
 
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void CMainServer::WorkerEntry_D(HANDLE hHandle)
-{
-    while (true)
-    {
-        DWORD Bytes = 0;
-        ClientSession* pSession = nullptr;
-        LPOVERLAPPED pOverlap = nullptr;
-
-        bool bRet = GetQueuedCompletionStatus(hHandle, &Bytes, (ULONG_PTR*)&pSession, (LPOVERLAPPED*)&pOverlap, INFINITE);
-
-        if (bRet == FALSE || Bytes == 0)
-        {
-            if (m_IOCPHandle == INVALID_HANDLE_VALUE)
-                return;
-
-            closesocket(pSession->soc);
-
-            continue;
-        }
-
-        pSession->CQPtr->Dequq_N(Bytes);
-
-        pSession->Respones = CTimer::GetInstance()->GetCurrTime();
-
-        //if (pSession->CQPtr->GetSize() <= 0)
-        //    SettingNextOrder(pSession);
-        ////만약 메세지를 보내지 않아도 되는상황이면 잠시 멈출것
-        ////메세지를 보내지 않아도 되는 상황 = MessageQueue가 비어있음.
-
-        if (pSession->eClientState == ClientSession::ClientState::WAITING)
-        {
-            pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
-            (
-                sizeof(int),
-                PREDATA::OrderType::USERCOUNT
-            ));
-            pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
-        }
-        else if (pSession->CQPtr->GetSize() == 0)
-        {
-            continue;
-        }
-        
-            
-
-        pSession->wsaBuf.len = pSession->CQPtr->GetSize();
-        pSession->wsaBuf.buf = (char*)pSession->CQPtr->GetFrontPtr();
-
-        DWORD recvLen = 0;
-        DWORD flag = 0;
-
-        if (WSASend((pSession)->soc, &pSession->wsaBuf, 1, &recvLen, flag, &(pSession)->OverlappedEvent, NULL) == SOCKET_ERROR)
-        {
-            if (WSAGetLastError() != WSA_IO_PENDING)
-            {
-                closesocket(pSession->soc);
-            }
-        }
-    }
-}
 
 void CMainServer::LiveCheck()
 {
@@ -345,22 +289,41 @@ void CMainServer::LiveCheck()
 
 void CMainServer::MatchingRoom()
 {
-    if (m_queWaitingQueue.size() >= 3)
+    if (m_queWaitingQueue.size() >= 1)
     {
-        ClientSession* pArr[3] = { nullptr, };
-        for (int i = 0; i < 3; i++)
+        CPlayingRoom* pNewRoom = new CPlayingRoom();
+
+        ClientSession* pArr[1] = { nullptr, };
+
+        for (int i = 0; i < 1; i++)
         {
+            ClientSession* pSession = m_queWaitingQueue.front();
+
             pArr[i] = m_queWaitingQueue.front();
+
+            pSession->PlayingRoomPtr = pNewRoom;
+
+            CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
+
             m_queWaitingQueue.front()->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
             (
                 sizeof(int),
                 PREDATA::OrderType::SCENECHANGE_TOPLAY
             ));
-            m_queWaitingQueue.front()->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
+            m_queWaitingQueue.front()->CQPtr->Enqueqe_Instance<int>(m_iCurrUser);
+
+            DWORD Sendlen = {};
+            DWORD Flag = {};
+            m_queWaitingQueue.front()->Lock_WSASend
+            (
+                &pSession->wsaBuf_Send, 1, &Sendlen, Flag, &pSession->Overlapped_Send, NULL
+            );
+
             m_queWaitingQueue.front()->eClientState = ClientSession::ClientState::SCENECHANGE_PLAY;
             m_queWaitingQueue.pop();
         }
-        CPlayingRoom* pNewRoom = new CPlayingRoom(pArr, m_liClientSockets);
+
+        pNewRoom->Init(pArr, m_liClientSockets);
     }
 }
 
@@ -403,3 +366,111 @@ void CMainServer::Lock_Queue_ChangingRoom(void* Ptr)
 void CMainServer::Lock_Session_ChangingState(void* Ptr)
 {
 }
+
+
+
+
+
+
+
+
+
+
+void CMainServer::WorkerEntry_D(HANDLE hHandle)
+{
+    while (true)
+    {
+        DWORD Bytes = 0;
+        ClientSession* pSession = nullptr;
+        LPOVERLAPPED pOverlap = nullptr;
+
+        bool bRet = GetQueuedCompletionStatus(hHandle, &Bytes, (ULONG_PTR*)&pSession, (LPOVERLAPPED*)&pOverlap, INFINITE);
+
+        if (bRet == FALSE || Bytes == 0)
+        {
+            if (m_IOCPHandle == INVALID_HANDLE_VALUE)
+                return;
+
+            closesocket(pSession->soc);
+
+            continue;
+        }
+
+        CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
+
+        if (pOverlap == &pSession->Overlapped_Send)
+        {
+#pragma region Send
+            pSession->CQPtr->Dequq_N(Bytes);
+
+            pSession->Respones = CTimer::GetInstance()->GetCurrTime();
+
+            //if (pSession->CQPtr->GetSize() == 0)
+            //{
+            //    if (pSession->eClientState == ClientSession::ClientState::WAITING)
+            //    {
+            //        pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+            //        (
+            //            sizeof(int),
+            //            PREDATA::OrderType::USERCOUNT
+            //        ));
+            //        pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
+            //    }
+            //    else
+            //    {
+            //        continue; //메세지 없으면 자러갈꺼임
+            //    }
+            //    //SettingNextOrder(pSession);
+            //}
+
+            if (pSession->CQPtr->GetSize() == 0)
+            {
+                continue; //메세지 없으면 자러갈꺼임
+            }
+
+            pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
+            pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
+
+            DWORD recvLen = 0;
+            DWORD flag = 0;
+
+            pSession->Lock_WSASend(&pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL);
+            //if (WSASend((pSession)->soc, &pSession->wsaBuf, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
+            //{
+            //    if (WSAGetLastError() != WSA_IO_PENDING)
+            //    {
+            //        closesocket(pSession->soc);
+            //    }
+            //}
+#pragma endregion Send
+        }
+        else
+        {
+#pragma region Recv
+            pSession->CQPtr->Dequq_N(Bytes);
+
+            pSession->Respones = CTimer::GetInstance()->GetCurrTime();
+
+            if (pSession->CQPtr->GetSize() == 0)
+            {
+                SettingNextOrder(pSession);
+            }
+
+            pSession->wsaBuf_Recv.len = sizeof(float);
+            pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
+
+            DWORD recvLen = 0;
+            DWORD flag = 0;
+
+            if (WSARecv((pSession)->soc, &pSession->wsaBuf_Recv, 1, &recvLen, &flag, &(pSession)->Overlapped_Recv, NULL) == SOCKET_ERROR)
+            {
+                if (WSAGetLastError() != WSA_IO_PENDING)
+                {
+                    closesocket(pSession->soc);
+                }
+            }
+#pragma endregion Recv
+        }
+    }
+}
+

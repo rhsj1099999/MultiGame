@@ -8,16 +8,6 @@
 
 class CPlayingRoom;
 
-class LockGuard
-{
-public:
-    LockGuard(mutex& _m)
-        : m(&_m) { m->lock(); }
-    ~LockGuard() { m->unlock(); }
-private:
-    mutex* m;
-};
-
 
 class CMainServer
 {

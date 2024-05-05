@@ -4,6 +4,7 @@
 #include "KeyMgr.h"
 #include "UIMgr.h"
 //#include "Cursor.h"
+#include "CServerManager.h"
 
 
 CCaseHoles::CCaseHoles()
@@ -30,67 +31,113 @@ void CCaseHoles::Initialize()
 
 int CCaseHoles::Update()
 {
-	if (CKeyMgr::Get_Instance()->Key_Pressing('Q'))
+	if (m_bIsServerMode == true)
 	{
-		this->m_fAngle += this->m_fAngleSpeed;
-
+		m_fAngle = CServerManager::Get_Instance()->GetCurrentAngle();
+		m_fAngle += m_fOffsetAngle_Server;
 		if (this->m_fAngle > 360.0f)
 		{
-			this->m_fAngle = 0.0f;
+			this->m_fAngle -= 360.0f;
 		}
-		float TempRadian = this->m_fAngle * 3.14f / 180.0f;
-	}
-	else
-	{
-		if (CKeyMgr::Get_Instance()->Key_Pressing('E'))
+		if (this->m_fAngle < 0.0f)
 		{
-			this->m_fAngle -= this->m_fAngleSpeed;
-			if (this->m_fAngle < 0.0f)
-			{
-				this->m_fAngle = 360.0f;
-			}
-			float TempRadian = this->m_fAngle * 3.14f / 180.0f;
+			this->m_fAngle += 360.0f;
 		}
-	}
-	if (this->m_fAngle > 5.0f && this->m_fAngle < 180.0f)
-	{
-		this->m_bIsOn = true;
-	}
-	else
-	{
-		this->m_bIsOn = false;
-	}
-	Cal_WorldMatrix();
-	if (CKeyMgr::Get_Instance()->Key_Pressing(VK_LBUTTON))
-	{
-		/*POINT TempCursorPoint = Cursor::GetInstance()->GetCursorPoint_My();*/
-		GetCursorPos(&m_MouseClickedPoint);
-		ScreenToClient(g_hWnd, &m_MouseClickedPoint);
-		if (PtInRect(&this->m_InsertArea, m_MouseClickedPoint) == true)
+
+		if (this->m_fAngle > 5.0f && this->m_fAngle < 180.0f)
 		{
-			if (this->m_bIsOn == true)
+			this->m_bIsOn = true;
+		}
+		else
+		{
+			this->m_bIsOn = false;
+		}
+		Cal_WorldMatrix();
+
+		if (CServerManager::Get_Instance()->GetMyTurn() == true)
+		{
+#pragma region MyTurn
+			if (CKeyMgr::Get_Instance()->Key_Pressing(VK_LBUTTON))
 			{
-				if (this->m_bIsInserted == false)
+				GetCursorPos(&m_MouseClickedPoint);
+				ScreenToClient(g_hWnd, &m_MouseClickedPoint);
+				if (PtInRect(&this->m_InsertArea, m_MouseClickedPoint) == true)
 				{
-					if (CUIMgr::Get_Instance()->Get_Money() >= 50)
+					//TOOD -> Get Whole Index
+					//Send Message
+					if (this->m_bIsOn == true && this->m_bIsInserted == false)
 					{
 						this->m_bIsInserted = true;
-						CUIMgr::Get_Instance()->Add_Money(-50);
-						JudgeReward();
+					}
+				}
+			}
+#pragma endregion MyTurn
+		}
+	}
+	else
+	{
+#pragma region NoServerMode
+		if (CKeyMgr::Get_Instance()->Key_Pressing('Q'))
+		{
+			this->m_fAngle += this->m_fAngleSpeed;
+
+			if (this->m_fAngle > 360.0f)
+			{
+				this->m_fAngle = 0.0f;
+			}
+		}
+		else
+		{
+			if (CKeyMgr::Get_Instance()->Key_Pressing('E'))
+			{
+				this->m_fAngle -= this->m_fAngleSpeed;
+				if (this->m_fAngle < 0.0f)
+				{
+					this->m_fAngle = 360.0f;
+				}
+			}
+		}
+		if (this->m_fAngle > 5.0f && this->m_fAngle < 180.0f)
+		{
+			this->m_bIsOn = true;
+		}
+		else
+		{
+			this->m_bIsOn = false;
+		}
+		Cal_WorldMatrix();
+		if (CKeyMgr::Get_Instance()->Key_Pressing(VK_LBUTTON))
+		{
+			GetCursorPos(&m_MouseClickedPoint);
+			ScreenToClient(g_hWnd, &m_MouseClickedPoint);
+			if (PtInRect(&this->m_InsertArea, m_MouseClickedPoint) == true)
+			{
+				if (this->m_bIsOn == true)
+				{
+					if (this->m_bIsInserted == false)
+					{
+						if (CUIMgr::Get_Instance()->Get_Money() >= 50)
+						{
+							this->m_bIsInserted = true;
+							CUIMgr::Get_Instance()->Add_Money(-50);
+							JudgeReward();
+						}
 					}
 				}
 			}
 		}
+#pragma endregion NoServerMode
 	}
 	return 0;
 }
 
 void CCaseHoles::AftInit(CObj* parmObjPtr, const float& parmAngle, const float& parmYOffset)
 {
-	this->m_pMakeMePtr = parmObjPtr;
-	this->m_fAngle = parmAngle; //aft
-	this->m_tInfo.vPos = this->m_pMakeMePtr->Get_Info().vPos; //aft
-	this->m_tInfo.vPos.y += parmYOffset; //aft
+	m_pMakeMePtr = parmObjPtr;
+	m_fAngle = parmAngle; //aft
+	m_fOffsetAngle_Server = parmAngle;
+	m_tInfo.vPos = m_pMakeMePtr->Get_Info().vPos; //aft
+	m_tInfo.vPos.y += parmYOffset; //aft
 }
 
 void CCaseHoles::Late_Update()

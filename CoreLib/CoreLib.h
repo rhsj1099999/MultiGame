@@ -57,6 +57,7 @@ struct PREDATA
         SCENECHANGE_TOWORLD,
         TURNOFF,
         TURNON,
+        ROTATEANGLE,
         END, //ERROR
     };
 
@@ -80,39 +81,21 @@ struct PREDATA
 
 class CMyCQ
 {
-    //class LockGuard
-    //{
-    //public:
-    //    LockGuard(mutex& _m)
-    //        : m(&_m) 
-    //    {
-    //        m->lock();
-    //    }
-    //    ~LockGuard() 
-    //    {
-    //        m->unlock();
-    //    }
-    //private:
-    //    mutex* m = nullptr;
-    //};
-
+public:
     class LockGuard
     {
     public:
         LockGuard(mutex& _m)
-            : m(&_m) {
-            while (true)
-            {
-                if (m->try_lock() == true)
-                {
-                    break;
-                }
-
-            }
+            : m(&_m) 
+        {
+            m->lock();
         }
-        ~LockGuard() { m->unlock(); }
+        ~LockGuard() 
+        {
+            m->unlock();
+        }
     private:
-        mutex* m;
+        mutex* m = nullptr;
     };
 
 private:
@@ -125,6 +108,8 @@ public:
     CMyCQ() = delete;
     CMyCQ(int ByteSize);
     ~CMyCQ();
+
+    mutex& GetMutex() { return m; }
 
     
     bool isEmpty();
@@ -145,7 +130,7 @@ public:
     template<typename T>
     void Enqueqe_Instance(T& Instance)
     {
-        LockGuard G(m);
+        
         if (isFull() || isFull_Add(sizeof(T)))
         {
             return;
@@ -173,7 +158,7 @@ public:
     template<typename T>
     void Enqueqe_InstanceRVal(T&& Instance)
     {
-        LockGuard G(m);
+        
         if (isFull() || isFull_Add(sizeof(T)))
         {
             return;
@@ -200,12 +185,12 @@ public:
     }
 
     template<typename T>
-    T* GetBufferT() { LockGuard G(m); return (T*)queue; }
+    T* GetBufferT() {  return (T*)queue; }
 
     template<typename T>
     void DisplayAll()
     {
-        LockGuard G(m);
+        
         int iTypeSize = sizeof(T);
 
         if (isEmpty())
@@ -247,9 +232,11 @@ public:
 
 struct ClientSession
 {
-    WSAOVERLAPPED OverlappedEvent;
+    WSAOVERLAPPED Overlapped_Send;
+    WSAOVERLAPPED Overlapped_Recv;
     SOCKET soc = INVALID_SOCKET;
-    WSABUF wsaBuf = {};
+    WSABUF wsaBuf_Send = {};
+    WSABUF wsaBuf_Recv = {};
     __int32 eType = 0;
     char recvBuffer[BUFSIZE] = {};
     __int32 recvSize = 0;
@@ -262,6 +249,8 @@ struct ClientSession
     int LateCount = 0;
     bool bHeaderTransferred = false;
     PREDATA pLatestHead;
+
+    void* PlayingRoomPtr = nullptr;
 
     enum class ClientState
     {
@@ -282,6 +271,36 @@ struct ClientSession
         {
             delete CQPtr;
         }
+    }
+
+    mutex WSAMutex_Send = {};
+    mutex WSAMutex_Recv = {};
+
+public:
+    int Lock_WSASend(_In_reads_(dwBufferCount) LPWSABUF lpBuffers,
+        _In_ DWORD dwBufferCount,
+        _Out_opt_ LPDWORD lpNumberOfBytesSent,
+        _In_ DWORD dwFlags,
+        _Inout_opt_ LPWSAOVERLAPPED lpOverlapped,
+        _In_opt_ LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine)
+    {
+        WSAMutex_Send.lock();
+        int Ret = WSASend(soc, lpBuffers, dwBufferCount, lpNumberOfBytesSent, dwFlags, lpOverlapped, lpCompletionRoutine);
+        WSAMutex_Send.unlock();
+        return Ret;
+    }
+    int Lock_WSARecv(_In_reads_(dwBufferCount) __out_data_source(NETWORK) LPWSABUF lpBuffers,
+        _In_ DWORD dwBufferCount,
+        _Out_opt_ LPDWORD lpNumberOfBytesRecvd,
+        _Inout_ LPDWORD lpFlags,
+        _Inout_opt_ LPWSAOVERLAPPED lpOverlapped,
+        _In_opt_ LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine)
+    {
+        
+        WSAMutex_Recv.lock();
+        int Ret = WSARecv(soc, lpBuffers, dwBufferCount, lpNumberOfBytesRecvd, lpFlags, lpOverlapped, lpCompletionRoutine);
+        WSAMutex_Recv.unlock();
+        return Ret;
     }
 };
 

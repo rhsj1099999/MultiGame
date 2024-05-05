@@ -2,6 +2,7 @@
 #include "Obj.h"
 class CUpCase : public CObj
 {
+	float m_fAngle_GetServer = 0.0;
 	bool m_bIsStageEnd = false;
 	float m_fAngle = 0.0f;
 	float m_fAngleSpeed = 0.0f;

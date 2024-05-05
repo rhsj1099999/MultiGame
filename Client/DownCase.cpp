@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "DownCase.h"
 #include "KeyMgr.h"
+#include "CServerManager.h"
 
 CDownCase::CDownCase()
 {
@@ -30,33 +31,35 @@ void CDownCase::Initialize()
 
 int CDownCase::Update()
 {
-	if (CKeyMgr::Get_Instance()->Key_Pressing('Q'))
+	if (m_bIsServerMode == true)
 	{
-		m_fAngle += m_fAngleSpeed;
-
-		if (m_fAngle > 360.0f)
-		{
-			m_fAngle = 0.0f;
-		}
-		float TempRadian = m_fAngle * 3.14f / 180.0f;
-		m_tInfo.vLook.x = cos(TempRadian);
-		m_tInfo.vLook.y = sin(TempRadian);
+		m_fAngle = CServerManager::Get_Instance()->GetCurrentAngle();
 	}
 	else
 	{
-		if (CKeyMgr::Get_Instance()->Key_Pressing('E'))
+		if (CKeyMgr::Get_Instance()->Key_Pressing('Q'))
 		{
-			m_fAngle -= m_fAngleSpeed;
+			m_fAngle += m_fAngleSpeed;
 
-			if (m_fAngle < 0.0f)
+			if (m_fAngle > 360.0f)
+				m_fAngle = 0.0f;
+
+		}
+		else
+		{
+			if (CKeyMgr::Get_Instance()->Key_Pressing('E'))
 			{
-				m_fAngle = 360.0f;
+				m_fAngle -= m_fAngleSpeed;
+
+				if (m_fAngle < 0.0f)
+					m_fAngle = 360.0f;
 			}
-			float TempRadian = m_fAngle * 3.14f / 180.0f;
-			m_tInfo.vLook.x = cos(TempRadian);
-			m_tInfo.vLook.y = sin(TempRadian);
 		}
 	}
+
+	float TempRadian = m_fAngle * 3.14f / 180.0f;
+	m_tInfo.vLook.x = cos(TempRadian);
+	m_tInfo.vLook.y = sin(TempRadian);
 
 	Cal_WorldMatrix();
 

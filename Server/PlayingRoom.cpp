@@ -3,34 +3,87 @@
 
 CPlayingRoom::CPlayingRoom(ClientSession* pThreeSession[], list<ClientSession*>& pReturnList)
 {
+	m_arrClients[0] = pThreeSession[0];
+	m_arrClients[1] = pThreeSession[1];
+	m_arrClients[2] = pThreeSession[2];
 }
 
 CPlayingRoom::~CPlayingRoom()
 {
 }
 
-void CPlayingRoom::Init()
+void CPlayingRoom::Init(ClientSession* pThreeSession[], list<ClientSession*>& pReturnList)
 {
-	m_iPlayingOrder = rand() % 3;
+    m_InsertedIndices.resize(15);
 
-	for (int i = 0; i < 3; ++i)
-	{
-		if (i == m_iPlayingOrder)
-		{
-			m_arrClients[m_iPlayingOrder]->eClientState = ClientSession::ClientState::TURNON;
-		}
-		m_arrClients[m_iPlayingOrder]->eClientState = ClientSession::ClientState::TURNOFF;
-	}
+	m_arrClients[0] = pThreeSession[0];
+	//m_arrClients[1] = pThreeSession[1];
+	//m_arrClients[2] = pThreeSession[2];
 
+	m_iPlayingOrder = rand() % 1;
 
+	m_arrClients[m_iPlayingOrder]->eClientState = ClientSession::ClientState::TURNON;
 
-	//첫번째로 움직일 사람을 결정 -> 그사람은 TurnOn
+    int Dummy = 0;
 
-	
+    for (int i = 0; i < 1; i++)
+    {
 
+        PREDATA::OrderType TempOrder = (i == m_iPlayingOrder) ? PREDATA::OrderType::TURNON : PREDATA::OrderType::TURNOFF;
+
+        ClientSession* pSession = m_arrClients[i];
+
+        CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
+
+        pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+        (
+            sizeof(int),
+            TempOrder
+        ));
+        pSession->CQPtr->Enqueqe_Instance<__int32>(Dummy);
+
+        DWORD Sendlen = {};
+        DWORD Flag = {};
+        pSession->Lock_WSASend
+        (
+            &pSession->wsaBuf_Send, 1, &Sendlen, Flag, &pSession->Overlapped_Send, NULL
+        );
+    }
 }
 
 void CPlayingRoom::Tick()
 {
-	//메세지 IO 싱크에 맞춰 전부에게 렌더링 상태를 맞출것
+
+    PREDATA::OrderType TempOrder = PREDATA::OrderType::ROTATEANGLE;
+
+    //for (size_t i = 0; i < 3; i++)
+    //{
+    //    if (i == m_iPlayingOrder)
+    //    {
+    //        continue;
+    //    }
+
+
+    //    //Send CurrAngle
+    //    ClientSession* pSession = m_arrClients[i];
+
+    //    CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
+
+    //    pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+    //    (
+    //        sizeof(int),
+    //        TempOrder
+    //    ));
+    //    pSession->CQPtr->Enqueqe_Instance<float>(m_fCurrAngle);
+
+    //    DWORD Sendlen = {};
+    //    DWORD Flag = {};
+
+    //    pSession->Lock_WSASend
+    //    (
+    //        &pSession->wsaBuf_Send, 1, &Sendlen, Flag, &pSession->Overlapped_Send, NULL
+    //    );
+    //}
+
+
 }

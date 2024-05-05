@@ -4,6 +4,7 @@ class CCaseHoles : public CObj
 {
 	bool m_bIsInserted = false;
 	float m_fAngle = 0.0f;
+	float m_fOffsetAngle_Server = 0.0f;
 	float m_fAngleSpeed = 0.0f;
 	float m_fCaseDiameter = 400.0f;
 	int Points = 20;

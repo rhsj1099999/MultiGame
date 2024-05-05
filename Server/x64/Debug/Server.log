@@ -1,7 +1,7 @@
 ﻿  Base.cpp
-  Main.cpp
-  MainInstance.cpp
   MainServer.cpp
+  MainInstance.cpp
+  Main.cpp
   PlayingRoom.cpp
   Timer.cpp
   stdafx.cpp
