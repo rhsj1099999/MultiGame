@@ -51,12 +51,39 @@ void CStage4::Render(HDC hDC)
 	CObjMgr::Get_Instance()->Render(hDC);
 	CUIMgr::Get_Instance()->Render(hDC);
 
+	//if (CServerManager::Get_Instance()->GetMyTurn() == true)
+	//{
+	//	TCHAR szBuff[64];
+	//	wsprintf(szBuff, L"%s", L"Your Turn.");
+	//	TextOut(hDC, 350, 25, szBuff, lstrlen(szBuff));
+	//}
+	//else
+	//{
+
+	//}
+	TCHAR szBuff[64];
+	
 	if (CServerManager::Get_Instance()->GetMyTurn() == true)
 	{
-		TCHAR szBuff[64];
-		wsprintf(szBuff, L"%s", L"Your Turn.");
+		wsprintf(szBuff, L"%s", L"Your Turn");
 		TextOut(hDC, 350, 25, szBuff, lstrlen(szBuff));
 	}
+	else
+	{
+		int CurrPlayer = CServerManager::Get_Instance()->GetCurrentPlayer();
+
+		if (CurrPlayer == -1)
+		{
+			wsprintf(szBuff, L"%s", L"...Waiting...");
+			TextOut(hDC, 350, 25, szBuff, lstrlen(szBuff));
+		}
+		else
+		{
+			wsprintf(szBuff, L"Player[ %d ]'s Turn", CurrPlayer);
+			TextOut(hDC, 350, 25, szBuff, lstrlen(szBuff));
+		}
+	}
+
 }
 
 void CStage4::Release()

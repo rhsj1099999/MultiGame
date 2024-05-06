@@ -60,7 +60,12 @@ struct PREDATA
         SCENECHANGE_TOWORLD,
         TURNOFF,
         TURNON,
+        TURNCHANGED,
         ROTATEANGLE,
+        FOLLOWANGLE,
+        PLAYERBLADEINSERTTRY,
+        PLAYERBLADEINSERTED,
+        FOLLOWINDEX,
         END, //ERROR
     };
 
@@ -238,6 +243,30 @@ public:
         }
         cout << endl;
     }
+};
+
+struct PlayingRoomSessionDesc
+{
+    int MyNumber = -1;
+    void* MyRoomPtr = nullptr; //For Server;
+};
+
+struct PAK_ROTATEANGLE
+{
+    PlayingRoomSessionDesc RoomSessionDesc = {};
+    float Angle = 0.0f;
+};
+
+struct PAK_BLADEINSERT
+{
+    PlayingRoomSessionDesc RoomSessionDesc = {};
+    int Index = 0;
+};
+
+struct PAK_INSERTFOLLOW
+{
+    int PlayerIndex = 0;
+    int HoldIndex = 0;
 };
 
 struct ClientSession

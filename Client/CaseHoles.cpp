@@ -59,15 +59,60 @@ int CCaseHoles::Update()
 #pragma region MyTurn
 			if (CKeyMgr::Get_Instance()->Key_Pressing(VK_LBUTTON))
 			{
+				return 0;
+
 				GetCursorPos(&m_MouseClickedPoint);
 				ScreenToClient(g_hWnd, &m_MouseClickedPoint);
 				if (PtInRect(&this->m_InsertArea, m_MouseClickedPoint) == true)
 				{
-					//TOOD -> Get Whole Index
-					//Send Message
-					if (this->m_bIsOn == true && this->m_bIsInserted == false)
+					bool bCanInsert = CServerManager::Get_Instance()->GetIsCanInsert(m_iHoleIndex);
+
+					if (this->m_bIsOn == false || this->m_bIsInserted == true || bCanInsert == false)
+						return 0;
+
+					this->m_bIsInserted = true;
+
+					CServerManager::Get_Instance()->SetInsert(m_iHoleIndex);
+
+					CServerManager::Get_Instance()->SetMyTurn(false);
+
+					m_iColorIndex = CServerManager::Get_Instance()->GetRoomDesc().MyNumber;
+
+					ClientSession* pSession = CServerManager::Get_Instance()->GetSession();
+
+					PAK_BLADEINSERT TempData = {};
+
+					CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
+
+					bool bTempMessageSend = false;
+					if (pSession->CQPtr->GetSize() == 0)
+						bTempMessageSend = true;
+
+					TempData.RoomSessionDesc = CServerManager::Get_Instance()->GetRoomDesc();
+
+					TempData.Index = m_iHoleIndex;
+
+					pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+					(
+						sizeof(PAK_BLADEINSERT),
+						PREDATA::OrderType::PLAYERBLADEINSERTED
+					));
+					pSession->CQPtr->Enqueqe_Instance<PAK_BLADEINSERT>(TempData);
+
+
+					if (bTempMessageSend == true)
 					{
-						this->m_bIsInserted = true;
+						DWORD recvLen = 0;
+						DWORD flag = 0;
+						pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
+						pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
+						if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
+						{
+							if (WSAGetLastError() != WSA_IO_PENDING)
+							{
+								closesocket(pSession->soc);
+							}
+						}
 					}
 				}
 			}
@@ -183,7 +228,7 @@ void CCaseHoles::Render(HDC hDC)
 		);
 		if (this->m_bIsInserted == true)
 		{
-			HPEN TempRedPen = CreatePen(1,5,RGB(255, 0, 0));
+			HPEN TempRedPen = (m_bIsServerMode == true) ? CreatePen(1, 5, m_Colors[m_iColorIndex]) : CreatePen(1, 5, RGB(255,0,0));
 			HPEN TempHoldPen = (HPEN)SelectObject(hDC, TempRedPen);
 			MoveToEx
 			(
@@ -212,10 +257,6 @@ void CCaseHoles::Render(HDC hDC)
 				m_vWorldBladeGuard.y - 15
 			);
 			DeleteObject(SelectObject(hDC, TempHoldPen));
-			int a = 10;
-
-
-
 		}
 		//HBRUSH TempRedBrush = CreateSolidBrush(RGB(255, 0, 0));
 		//HBRUSH TempHoldBRush = (HBRUSH)SelectObject(hDC, TempRedBrush);

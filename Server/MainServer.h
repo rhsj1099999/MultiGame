@@ -40,6 +40,7 @@ private:
 	void WorkerEntry_D(HANDLE hHandle);
 	void LiveCheck();
 	void MatchingRoom();
+	bool ExecuetionMessage(PREDATA::OrderType eType, void* Data, int DataSize);
 
 	void Lock_Queue(VFPtr pFArr[], int ArrSize, void* Args[]);
 	void Lock_Queue_Push(void* Ptr);

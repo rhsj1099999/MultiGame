@@ -1,5 +1,6 @@
 #pragma once
 #include "Obj.h"
+class CCaseHoles;
 class CUpCase : public CObj
 {
 	float m_fAngle_GetServer = 0.0;
@@ -10,7 +11,7 @@ class CUpCase : public CObj
 	int Points = 18;
 	vector<D3DXVECTOR3> m_LocalPointVector;
 	vector<D3DXVECTOR3> m_WorldPointVector;
-	vector<CObj*> m_HolesPtrVector;
+	vector<CCaseHoles*> m_HolesPtrVector;
 	vector<RECT> m_HoleRectVector;
 	POINT m_MouseClickedPoint = {};
 

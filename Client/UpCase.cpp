@@ -46,10 +46,12 @@ void CUpCase::Initialize()
 	}
 	m_tInfo.vPos = { 400,300,0.0f };
 
+	int Horizontal = 15;
+	int Vertical = 3;
 	
-	for (int i = 0; i < 15; i++)
+	for (int i = 0; i < Horizontal; i++)
 	{
-		for (int j = 0; j < 3; j++)
+		for (int j = 0; j < Vertical; j++)
 		{
 			CObj* TempPtr = new CCaseHoles();
 			if (m_bIsServerMode == true)
@@ -60,10 +62,16 @@ void CUpCase::Initialize()
 			TempCastPtr->Initialize();
 			TempCastPtr->AftInit(this, 0.0f + static_cast<float>(i) * 24.0f, 40.0f + j * 200);
 			CObjMgr::Get_Instance()->Add_Object(OBJ_CASEHOLES, TempPtr);
-			this->m_HolesPtrVector.push_back(TempPtr);
-		}
 
+			this->m_HolesPtrVector.push_back(TempCastPtr);
+			TempCastPtr->SetHoleIndex((i * Vertical) + j);
+		}
 	}
+	if (m_bIsServerMode == true)
+	{
+		CServerManager::Get_Instance()->SetHoleVecPtr(&m_HolesPtrVector);
+	}
+
 	CObj* TempHeadPtr = new CPirateHead();
 	CPirateHead* TempHeadCastPtr = static_cast<CPirateHead*>(TempHeadPtr);
 	TempHeadCastPtr->Initialize();
@@ -94,6 +102,7 @@ int CUpCase::Update()
 	{
 		if (CServerManager::Get_Instance()->GetMyTurn() == true)
 		{
+			bool KeyPressed = false;
 			if (CKeyMgr::Get_Instance()->Key_Pressing('Q'))
 			{
 				m_fAngle += m_fAngleSpeed;
@@ -101,6 +110,7 @@ int CUpCase::Update()
 				if (m_fAngle > 360.0f)
 					m_fAngle = 0.0f;
 
+				KeyPressed = true;
 			}
 			else
 			{
@@ -111,9 +121,64 @@ int CUpCase::Update()
 					if (m_fAngle < 0.0f)
 						m_fAngle = 360.0f;
 
+					KeyPressed = true;
 				}
 			}
-			CServerManager::Get_Instance()->SetCurrentAngle(m_fAngle);
+
+			if (KeyPressed == true)
+			{
+				float GetPrevAngle = CServerManager::Get_Instance()->GetPrevAngle();
+
+				if (fabsf(GetPrevAngle - m_fAngle) > 7.5f)
+				{
+					CServerManager::Get_Instance()->SetPreviousAngle(m_fAngle);
+
+					ClientSession* pSession = CServerManager::Get_Instance()->GetSession();
+
+					PAK_ROTATEANGLE TempData = {};
+
+					int DebugSize = sizeof(TempData);
+
+					TempData.RoomSessionDesc = CServerManager::Get_Instance()->GetRoomDesc();
+
+					TempData.Angle = m_fAngle;
+
+					CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
+
+					bool bTempMessageSend = false;
+					if (pSession->CQPtr->GetSize() == 0)
+						bTempMessageSend = true;
+
+					pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+					(
+						sizeof(PAK_ROTATEANGLE),
+						PREDATA::OrderType::ROTATEANGLE
+					));
+					pSession->CQPtr->Enqueqe_Instance<PAK_ROTATEANGLE>(TempData);
+
+					if (bTempMessageSend == true)
+					{
+						DWORD recvLen = 0;
+						DWORD flag = 0;
+						pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
+						pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
+						if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
+						{
+							if (WSAGetLastError() != WSAEWOULDBLOCK)
+							{
+								SR1_MSGBOX("EWOULDBLOCK In Client. UpCase");
+							}
+
+							if (WSAGetLastError() != WSA_IO_PENDING)
+							{
+								//closesocket(pSession->soc);
+							}
+						}
+					}
+				}
+				
+				CServerManager::Get_Instance()->SetCurrentAngle(m_fAngle);
+			}
 		}
 		else
 		{

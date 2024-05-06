@@ -107,7 +107,7 @@ void CMainServer::Tick()
 {
     ConnectTry();
 
-    LiveCheck();
+    //LiveCheck();
 
     MatchingRoom();
 
@@ -219,16 +219,15 @@ void CMainServer::ConnectTry()
     pSession->eType = QUEUEWATING;
     pSession->Respones = CTimer::GetInstance()->GetCurrTime();
     pSession->LateCount = 0;
-    pSession->ByteTransferred = 0;
     pSession->eClientState = ClientSession::ClientState::WAITING;
     m_liClientSockets.push_back(pSession);
-    pSession->CQPtr = new CMyCQ(64);
+    pSession->CQPtr = new CMyCQ(256);
     m_queWaitingQueue.push(pSession);
     CreateIoCompletionPort((HANDLE)ClientSocket, m_IOCPHandle, /*Key*/(ULONG_PTR)pSession, 0);
 
     m_iCurrUser = static_cast<__int32>(m_liClientSockets.size());
 
-    memcpy(pSession->recvBuffer, &m_iCurrUser, sizeof(m_iCurrUser));
+    //memcpy(pSession->recvBuffer, &m_iCurrUser, sizeof(m_iCurrUser));
     cout << "Client Connected Users : " << m_iCurrUser << endl;
     
 
@@ -240,10 +239,15 @@ void CMainServer::ConnectTry()
     ));
     pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
 
-    pSession->pLatestHead = PREDATA(sizeof(int),PREDATA::OrderType::USERCOUNT);
     pSession->ByteToSent = pSession->CQPtr->GetSize();
     pSession->wsaBuf_Send.buf = pSession->CQPtr->GetBuffer();
     pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
+
+    pSession->ByteTransferred = 0;
+    pSession->ByteToRead = sizeof(PREDATA);
+    pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
+    pSession->wsaBuf_Recv.len = sizeof(PREDATA);
+    pSession->ByteTransferred = 0;
 
     DWORD recvLen = 0;
     DWORD flag = 0;
@@ -290,11 +294,15 @@ void CMainServer::MatchingRoom()
 {
     if (m_queWaitingQueue.size() >= CLIENT3)
     {
-        Sleep(1000);
-
         CPlayingRoom* pNewRoom = new CPlayingRoom();
 
         ClientSession* pArr[CLIENT3] = { nullptr, };
+
+        PlayingRoomSessionDesc Desc
+        {
+            -1,
+            pNewRoom
+        };
 
         for (int i = 0; i < CLIENT3; i++)
         {
@@ -310,12 +318,165 @@ void CMainServer::MatchingRoom()
             if (pSession->CQPtr->GetSize() == 0)
                 bTempMessageSend = true;
 
+            Desc.MyNumber = i;
+
             m_queWaitingQueue.front()->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
             (
-                sizeof(int),
+                sizeof(PlayingRoomSessionDesc),
                 PREDATA::OrderType::SCENECHANGE_TOPLAY
             ));
-            m_queWaitingQueue.front()->CQPtr->Enqueqe_Instance<int>(m_iCurrUser);
+            m_queWaitingQueue.front()->CQPtr->Enqueqe_Instance<PlayingRoomSessionDesc>(Desc);
+
+            if (bTempMessageSend == true)
+            {
+                DWORD recvLen = 0;
+                DWORD flag = 0;
+                pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
+                pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
+                if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
+                {
+                    //if (WSAGetLastError() != WSA_IO_PENDING)
+                    //{
+                    //    closesocket(pSession->soc);
+                    //}
+                    if (WSAGetLastError() != WSAEWOULDBLOCK)
+                    {
+                        SR1_MSGBOX("EWOULDBLOCK In Send Server. Matching Room");
+                    }
+                }
+            }
+
+
+            m_queWaitingQueue.front()->eClientState = ClientSession::ClientState::SCENECHANGE_PLAY;
+            m_queWaitingQueue.pop();
+        }
+
+        pNewRoom->Init(pArr, m_liClientSockets);
+    }
+}
+
+bool CMainServer::ExecuetionMessage(PREDATA::OrderType eType, void* pData, int DataSize)
+{
+    bool Ret = false;
+
+    switch (eType)
+    {
+    case PREDATA::OrderType::USERCOUNT:
+        break;
+    case PREDATA::OrderType::TEST2:
+        break;
+    case PREDATA::OrderType::MESSAGECHANGE:
+        break;
+    case PREDATA::OrderType::SCENECHANGE_TOPLAY:
+        break;
+    case PREDATA::OrderType::SCENECHANGE_TOWORLD:
+        break;
+    case PREDATA::OrderType::TURNON:
+        break;
+    case PREDATA::OrderType::TURNOFF:
+        break;
+    case PREDATA::OrderType::ROTATEANGLE:
+    {
+        char* pCharCasted = static_cast<char*>(pData);
+
+        PAK_ROTATEANGLE Data;
+
+        memcpy(&Data, pCharCasted, sizeof(PAK_ROTATEANGLE));
+
+        CPlayingRoom* pRoom = static_cast<CPlayingRoom*>(Data.RoomSessionDesc.MyRoomPtr);
+
+        ClientSession** pClients = pRoom->GetClients();
+
+        float fAngle = Data.Angle;
+
+        for (int i = 0; i < CLIENT3; ++i)
+        {
+            if (i == Data.RoomSessionDesc.MyNumber)
+            {
+                continue;
+            }
+
+            ClientSession* pSession = pClients[i];
+
+            CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
+
+            bool bTempMessageSend = false;
+            if (pSession->CQPtr->GetSize() == 0)
+                bTempMessageSend = true;
+
+            pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+            (
+                sizeof(float),
+                PREDATA::OrderType::FOLLOWANGLE
+            ));
+            pSession->CQPtr->Enqueqe_Instance<float>(fAngle);
+
+            if (bTempMessageSend == true)
+            {
+                DWORD recvLen = 0;
+                DWORD flag = 0;
+                pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
+                pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
+                if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
+                {
+                    //if (WSAGetLastError() != WSA_IO_PENDING)
+                    //{
+                    //    closesocket(pSession->soc);
+                    //}
+                    if (WSAGetLastError() != WSAEWOULDBLOCK)
+                    {
+                        SR1_MSGBOX("EWOULDBLOCK In Send RotateAngle Server");
+                    }
+                }
+            }
+        }
+    }
+        break;
+    case PREDATA::OrderType::PLAYERBLADEINSERTED:
+    {
+        char* pCharCasted = static_cast<char*>(pData);
+
+        PAK_BLADEINSERT Data;
+
+        memcpy(&Data, pCharCasted, sizeof(PAK_BLADEINSERT));
+
+        CPlayingRoom* pRoom = static_cast<CPlayingRoom*>(Data.RoomSessionDesc.MyRoomPtr);
+
+        ClientSession** pClients = pRoom->GetClients();
+
+        int InsertedIndex = Data.Index;
+
+        int NextTurn = (++Data.RoomSessionDesc.MyNumber) % CLIENT3;
+
+        for (int i = 0; i < CLIENT3; ++i)
+        {
+            ClientSession* pSession = pClients[i];
+
+            CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
+
+            bool bTempMessageSend = false;
+            if (pSession->CQPtr->GetSize() == 0)
+                bTempMessageSend = true;
+
+            if (i != Data.RoomSessionDesc.MyNumber)
+            {
+                pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+                (
+                    sizeof(PAK_INSERTFOLLOW),
+                    PREDATA::OrderType::FOLLOWINDEX
+                ));
+                PAK_INSERTFOLLOW TempFollowData = {};
+                TempFollowData.HoldIndex = InsertedIndex;
+                TempFollowData.PlayerIndex = Data.RoomSessionDesc.MyNumber;
+                pSession->CQPtr->Enqueqe_Instance<PAK_INSERTFOLLOW>(TempFollowData);
+            }
+
+            pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+            (
+                sizeof(int),
+                PREDATA::OrderType::TURNCHANGED
+            ));
+            pSession->CQPtr->Enqueqe_Instance<int>(NextTurn);
 
             if (bTempMessageSend == true)
             {
@@ -331,14 +492,15 @@ void CMainServer::MatchingRoom()
                     }
                 }
             }
-
-
-            m_queWaitingQueue.front()->eClientState = ClientSession::ClientState::SCENECHANGE_PLAY;
-            m_queWaitingQueue.pop();
         }
-
-        pNewRoom->Init(pArr, m_liClientSockets);
     }
+        break;
+    case PREDATA::OrderType::END:
+        break;
+    default:
+        break;
+    }
+    return Ret;
 }
 
 void CMainServer::Lock_Session(VFPtr pFArr[], int ArrSize, void* Args[])
@@ -432,9 +594,13 @@ void CMainServer::WorkerEntry_D(HANDLE hHandle)
             //pSession->Lock_WSASend(&pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL);
             if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
             {
-                if (WSAGetLastError() != WSA_IO_PENDING)
+                //if (WSAGetLastError() != WSA_IO_PENDING)
+                //{
+                //    closesocket(pSession->soc);
+                //}
+                if (WSAGetLastError() != WSAEWOULDBLOCK)
                 {
-                    closesocket(pSession->soc);
+                    SR1_MSGBOX("EWOULDBLOCK In Send Server");
                 }
             }
 #pragma endregion Send
@@ -442,30 +608,90 @@ void CMainServer::WorkerEntry_D(HANDLE hHandle)
         else
         {
 #pragma region Recv
-            pSession->CQPtr->Dequq_N(Bytes);
+            pSession->ByteTransferred += Bytes;
+            pSession->ByteToRead -= Bytes;
+
+            if (pSession->ByteToRead < 0)
+                SR1_MSGBOX("ERROR : ByteToRead Under 0 / Server");
 
             pSession->Respones = CTimer::GetInstance()->GetCurrTime();
 
-            if (pSession->CQPtr->GetSize() == 0)
+            while (true)
             {
-                SettingNextOrder(pSession);
-            }
-
-            pSession->wsaBuf_Recv.len = sizeof(float);
-            pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
-
-            DWORD recvLen = 0;
-            DWORD flag = 0;
-
-            if (WSARecv((pSession)->soc, &pSession->wsaBuf_Recv, 1, &recvLen, &flag, &(pSession)->Overlapped_Recv, NULL) == SOCKET_ERROR)
-            {
-                if (WSAGetLastError() != WSA_IO_PENDING)
+                if (pSession->bHeaderTransferred == false)
                 {
-                    closesocket(pSession->soc);
+                    //헤더가 캐싱된적이 없다
+                    if (pSession->ByteTransferred < sizeof(PREDATA))
+                    {
+                        //근데 헤더를 완성할 수 없다
+                        pSession->wsaBuf_Recv.buf = &pSession->recvBuffer[pSession->ByteTransferred];
+                        pSession->wsaBuf_Recv.len = pSession->ByteToRead;
+                        break;
+                    }
+                    else
+                    {
+                        //헤더를 캐싱할 수 있다.
+                        pSession->bHeaderTransferred = true;
+                        pSession->pLatestHead = *((PREDATA*)pSession->recvBuffer);
+                        pSession->ByteTransferred = 0;
+                        pSession->ByteToRead = pSession->pLatestHead.iSizeStandby;
+                        pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
+                        pSession->wsaBuf_Recv.len = pSession->pLatestHead.iSizeStandby;
+                        break;
+                    }
+                }
+                else
+                {
+                    //헤더를 캐싱했다
+                    if (pSession->ByteTransferred < pSession->ByteToRead)
+                    {
+                        //데이터를 다 못읽었다.
+                        pSession->wsaBuf_Recv.buf = &pSession->recvBuffer[pSession->ByteTransferred];
+                        pSession->wsaBuf_Recv.len = pSession->ByteToRead;
+                        break;
+                    }
+                    else
+                    {
+                        //데이터를 다 읽었다.
+                        ExecuetionMessage
+                        (
+                            pSession->pLatestHead.eOrderType,
+                            pSession->recvBuffer,
+                            pSession->pLatestHead.iSizeStandby
+                        );
+                        pSession->bHeaderTransferred = false;
+                        pSession->ByteTransferred = 0;
+                        pSession->ByteToRead = sizeof(PREDATA);
+                        pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
+                        pSession->wsaBuf_Recv.len = sizeof(PREDATA);
+                        break;
+                    }
                 }
             }
-#pragma endregion Recv
         }
+
+        DWORD recvLen = 0;
+        DWORD flag = 0;
+
+        if (pSession->ByteToRead <= 0)
+        {
+            wchar_t Log[32] = {};
+            wsprintf(Log, L"ByteToRead Error Server, %d", pSession->ByteToRead);
+            MessageBox(0, Log, TEXT("Fail_"), MB_OK);
+        }
+
+        if (WSARecv(pSession->soc, &pSession->wsaBuf_Recv, 1, &recvLen, &flag, &pSession->Overlapped_Recv, NULL) == SOCKET_ERROR)
+        {
+            //if (WSAGetLastError() != WSA_IO_PENDING)
+            //{
+            //    closesocket(m_Socket);
+            //}
+            if (WSAGetLastError() != WSAEWOULDBLOCK)
+            {
+                SR1_MSGBOX("EWOULDBLOCK In Recv Server");
+            }
+        }
+#pragma endregion Recv
     }
 }
 

@@ -8,6 +8,9 @@ public:
 
 	void Init(ClientSession* pThreeSession[], list<ClientSession*>& pReturnList);
 	void Tick();
+	float GetCurrAngle() { return m_fCurrAngle; }
+	void SetCurrAngle(float fAngle) { m_fCurrAngle = fAngle; }
+	ClientSession** GetClients() { return m_arrClients; }
 
 private:
 	float m_fRotated = 0.0f;

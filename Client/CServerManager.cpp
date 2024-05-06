@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "CServerManager.h"
 #include "SceneMgr.h"
+#include "CaseHoles.h"
 
 
 CServerManager* CServerManager::m_pInstance = nullptr;
@@ -30,26 +31,18 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
             SR1_MSGBOX("GQCS Fail : Recieve At Client");
             //아마도 서버가 죽거나 서버컴 랜선이 뽑혔을때
 
-            
-
             continue;
         }
 
         if (pOverlap == &pSession->Overlapped_Recv)
         {
-#pragma region Read
-
-            if (SceneChanged == true)
-            {
-                int a = 10;
-            }
-
+#pragma region Recv
             pSession->ByteTransferred += Bytes;
             pSession->ByteToRead -= Bytes;
 
 
             if (pSession->ByteToRead < 0)
-                SR1_MSGBOX("ERROR : ByteToRead Under 0");
+                SR1_MSGBOX("ERROR : ByteToRead Under 0 / Client");
 
             while (true)
             {
@@ -109,7 +102,7 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
             if (pSession->ByteToRead <= 0)
             {
                 wchar_t Log[32] = {};
-                wsprintf(Log, L"ByteToRead Error, %d", pSession->ByteToRead);
+                wsprintf(Log, L"ByteToRead Error Client, %d", pSession->ByteToRead);
                 MessageBox(0, Log, TEXT("Fail_"), MB_OK);
             }
 
@@ -120,18 +113,34 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
                     closesocket(m_Socket);
                 }
             }
-#pragma endregion Read
+#pragma endregion Recv
         }
         else
         {
 #pragma region Send
+            CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
+
+            pSession->CQPtr->Dequq_N(Bytes);
+
+            if (pSession->CQPtr->GetSize() == 0)
+                continue; //메세지 없으면 자러갈꺼임
+
+            pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
+            pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
+
             DWORD recvLen = 0;
             DWORD flag = 0;
-            if (WSASend(pSession->soc, &pSession->wsaBuf_Recv, 1, &recvLen, flag, &pSession->Overlapped_Send, NULL) == SOCKET_ERROR)
+
+            if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
             {
                 if (WSAGetLastError() != WSA_IO_PENDING)
                 {
-                    closesocket(m_Socket);
+                    //SR1_MSGBOX("SocketClosed / Client");
+                    //closesocket(pSession->soc);
+                }
+                if (WSAGetLastError() != WSAEWOULDBLOCK)
+                {
+                    SR1_MSGBOX("EWOULDBLOCK In Client. UpCase");
                 }
             }
 #pragma endregion Send
@@ -250,30 +259,36 @@ void CServerManager::InitServer()
 
                 pSession->ByteTransferred = 0;
                 pSession->ByteToRead = sizeof(PREDATA);
-                pSession->CQPtr = new CMyCQ(64);
                 pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
                 pSession->wsaBuf_Recv.len = sizeof(PREDATA);
                 CreateIoCompletionPort((HANDLE)m_Socket, m_IOCPHandle, /*Key*/(ULONG_PTR)pSession, 0); //등록할때는
 
+                pSession->CQPtr = new CMyCQ(256);
 
                 DWORD recvLen = 0;
                 DWORD flag = 0;
 
 
-                pSession->Lock_WSARecv(&pSession->wsaBuf_Recv, 1, &recvLen, &flag, &pSession->Overlapped_Recv, NULL);
-               
-                //if (WSARecv(pSession->soc, &pSession->wsaBuf, 1, &recvLen, &flag, &pSession->Overlapped_Recv, NULL) == SOCKET_ERROR)
-                //{
-                //    if (WSAGetLastError() != WSA_IO_PENDING)
-                //    {
-                //        //SR1_MSGBOX("WSARecv ERROR But Not Pending");
-                //        closesocket(m_Socket);
-                //    }
-                //}
+                if (WSARecv(pSession->soc, &pSession->wsaBuf_Recv, 1, &recvLen, &flag, &pSession->Overlapped_Recv, NULL) == SOCKET_ERROR)
+                {
+                    if (WSAGetLastError() != WSA_IO_PENDING)
+                    {
+                        closesocket(m_Socket);
+                    }
+                }
                 break;
             }
         }
     }
+}
+
+PlayingRoomSessionDesc* CServerManager::GetRoomDescPtr()
+{
+    if (m_tRoomDesc.MyNumber == -1)
+        return nullptr;
+
+    return &m_tRoomDesc;
+    
 }
 
 bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int DataSize)
@@ -297,8 +312,12 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
     {
         m_iCurrUser = 1;
         CSceneMgr::Get_Instance()->Scene_Change(SC_STAGE4, true);
-        int a = 10;
-        SceneChanged = true;
+
+        /*RoomDesc*/
+        PlayingRoomSessionDesc* pCast = static_cast<PlayingRoomSessionDesc*>(Data);
+        CServerManager::Get_Instance()->SetRoomDesc(pCast);
+        m_HoleVector.clear();
+        m_HoleVector.resize(45, true);
     }
 
         break;
@@ -307,25 +326,47 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
         CSceneMgr::Get_Instance()->Scene_Change(SC_WORLDMAP);
         break;
 
+    case PREDATA::OrderType::TURNOFF:
+        m_bCanMove = false;
+        break;
+
     case PREDATA::OrderType::TURNON:
-        if (SceneChanged == false)
-        {
-            SR1_MSGBOX("TurnOnFirst");
-        }
         m_bCanMove = true;
         break;
 
-    case PREDATA::OrderType::TURNOFF:
-        m_bCanMove = false;
+    case PREDATA::OrderType::TURNCHANGED:
+    {
+        memcpy(&m_iCurrentPlayer, (int*)Data, sizeof(int));
+        m_bCanMove = (m_tRoomDesc.MyNumber == m_iCurrentPlayer) ? true : false;
+    }
+
         break;
 
 	case PREDATA::OrderType::END:
 		memcpy(&m_iCurrUser, (int*)Data, DataSize);
 		break;
+
+    case PREDATA::OrderType::FOLLOWANGLE:
+        memcpy(&m_fCurrAngle, (float*)Data, sizeof(float));
+        break;
+
+    case PREDATA::OrderType::FOLLOWINDEX:
+    {
+        PAK_INSERTFOLLOW TempData = {};
+
+        memcpy(&TempData, (int*)Data, sizeof(PAK_INSERTFOLLOW));
+        m_HoleVector[TempData.HoldIndex] = false;
+        (*m_vecCaseHoles)[TempData.HoldIndex]->SetIsInserted(true, TempData.PlayerIndex);
+    }
+
+        break;
+
 	default:
+    {
         SR1_MSGBOX("Wrong Message");
         Ret = true;
         int a = 10;
+    }
 		break;
 	}
     return Ret;
