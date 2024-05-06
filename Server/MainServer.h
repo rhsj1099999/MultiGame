@@ -23,7 +23,6 @@ public:
 	void Init();
 	void Tick();
 
-	bool SettingNextOrder(ClientSession* pSession);
 
 public:
 	//int		Update();
@@ -49,7 +48,6 @@ private:
 	void Lock_Session(VFPtr pFArr[], int ArrSize, void* Args[]);
 	void Lock_Session_ChangingState(void* Ptr);
 
-	//void ExecuetionMessage(PREDATA::OrderType eType, void* Data, int DataSize);
 private:
 	static CMainServer* m_pInstance;
 	/*---------------

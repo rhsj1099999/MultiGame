@@ -2,6 +2,8 @@
 #include "CServerManager.h"
 #include "SceneMgr.h"
 #include "CaseHoles.h"
+#include "KeyMgr.h"
+#include "MainGame.h"
 
 
 CServerManager* CServerManager::m_pInstance = nullptr;
@@ -29,7 +31,6 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
                 SR1_MSGBOX("ERROR : GQCS Read 0 Bytes");
 
             SR1_MSGBOX("GQCS Fail : Recieve At Client");
-            //아마도 서버가 죽거나 서버컴 랜선이 뽑혔을때
 
             continue;
         }
@@ -108,9 +109,10 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
 
             if (WSARecv(pSession->soc, &pSession->wsaBuf_Recv, 1, &recvLen, &flag, &pSession->Overlapped_Recv, NULL) == SOCKET_ERROR)
             {
-                if (WSAGetLastError() != WSA_IO_PENDING)
+                int ERR = WSAGetLastError();
+                if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
                 {
-                    closesocket(m_Socket);
+                    MSGBOX("Error_MySend. Not EWB, PENDING");
                 }
             }
 #pragma endregion Recv
@@ -133,14 +135,10 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
 
             if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
             {
-                if (WSAGetLastError() != WSA_IO_PENDING)
+                int ERR = WSAGetLastError();
+                if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
                 {
-                    //SR1_MSGBOX("SocketClosed / Client");
-                    //closesocket(pSession->soc);
-                }
-                if (WSAGetLastError() != WSAEWOULDBLOCK)
-                {
-                    SR1_MSGBOX("EWOULDBLOCK In Client. UpCase");
+                    MSGBOX("Error_MySend. Not EWB, PENDING");
                 }
             }
 #pragma endregion Send
@@ -160,6 +158,13 @@ CServerManager::~CServerManager()
 
 int CServerManager::Update()
 {
+    //if (m_bClientConnected == false)
+    //    return 0;
+
+    //HeartBit
+
+    ChattingUpdate();
+ 
 	return 0;
 }
 
@@ -241,7 +246,7 @@ void CServerManager::InitServer()
                     m_IOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
                 }
                 m_bClientConnected = true;
-                for (int i = 0; i < 1; i++)
+                for (int i = 0; i < 10; i++)
                 {
                     m_vecWorkerThreads.push_back(thread([=]()
                         {
@@ -271,15 +276,157 @@ void CServerManager::InitServer()
 
                 if (WSARecv(pSession->soc, &pSession->wsaBuf_Recv, 1, &recvLen, &flag, &pSession->Overlapped_Recv, NULL) == SOCKET_ERROR)
                 {
-                    if (WSAGetLastError() != WSA_IO_PENDING)
+                    int ERR = WSAGetLastError();
+                    if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
                     {
-                        closesocket(m_Socket);
+                        MSGBOX("Error_MySend. Not EWB, PENDING");
                     }
                 }
                 break;
             }
         }
     }
+}
+
+bool CServerManager::ChattingLengthCheck()
+{
+    //if (m_bIsChatReady == false)
+    //    return false;
+
+    //int a = 10;
+    return true;
+}
+
+void CServerManager::ChattingShowOn()
+{
+    if (g_hWndEdit != NULL)
+    {
+        ShowWindow(g_hWndEdit, SW_SHOW);
+    }
+}
+
+void CServerManager::ChattingUpdate()
+{
+    //Chatting
+    if (g_hWndEdit == NULL)
+    {
+        g_hWndEdit = CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", L"", WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+            50, 50, 200, 30, g_hWnd, NULL, g_hInstance, NULL);
+
+        ShowWindow(g_hWndEdit, SW_HIDE);
+        //int Ret = SetWindowLongPtr(g_hWndEdit, GWLP_WNDPROC, (LONG_PTR)g_Proc);
+    }
+
+    if (CKeyMgr::Get_Instance()->Key_Down(VK_RETURN))
+    {
+        if (m_bIsChatReady == false)
+        {
+            m_bIsChatReady = true;
+            ShowWindow(g_hWndEdit, SW_SHOW);
+            SetFocus(g_hWndEdit);
+        }
+        else
+        {
+            wchar_t Buffer[MAX_PATH] = {};
+            GetWindowText(g_hWndEdit, Buffer, MAXCHATLEN + 1);
+            char Buffer_Char[MAXCHATLEN_TOC] = {};
+            WideCharToMultiByte(CP_UTF8, 0, Buffer, -1, Buffer_Char, sizeof(Buffer_Char), NULL, NULL);
+            int Byte = strnlen_s(Buffer_Char, MAXCHATLEN_TOC);
+            
+            bool bIsOnlyBlank = true;
+            for (int i = 0; i < Byte; i++)
+            {
+                if (Buffer_Char[i] != ' ')
+                {
+                    bIsOnlyBlank = false;
+                    break;
+                }
+            }
+
+            //if (Buffer_Char[0] != '\0' && bIsOnlyBlank == false && m_bClientConnected == true)
+            //    MySend_Ptr(m_pSession, Buffer_Char, Byte, PREDATA::OrderType::CHATSEND);
+
+            if (Buffer_Char[0] != '\0' && bIsOnlyBlank == false && m_bClientConnected == true)
+            {
+                char TempPacketPtr[MAX_PATH] = {};
+                MSGType TempMsgType = MSGType::User;
+                memcpy(TempPacketPtr, &TempMsgType, sizeof(TempMsgType));
+                memcpy(&TempPacketPtr[sizeof(TempMsgType)], &m_tRoomDesc, sizeof(m_tRoomDesc));
+                memcpy(&TempPacketPtr[sizeof(TempMsgType) + sizeof(m_tRoomDesc)], &Buffer_Char, Byte);
+                MySend_Ptr(m_pSession, TempPacketPtr, Byte + sizeof(TempMsgType), PREDATA::OrderType::CLIENTCHATSHOOT);
+
+            }
+
+            SetWindowText(g_hWndEdit, L"");
+            SendMessage(g_hWndEdit, EM_SETSEL, (WPARAM)-1, (LPARAM)-1);
+            GetWindowText(g_hWndEdit, Buffer, MAXCHATLEN + 1);
+
+            m_bIsChatReady = false;
+            ShowWindow(g_hWndEdit, SW_HIDE);
+            SetFocus(g_hWnd);
+        }
+    }
+
+    if (m_bIsChatReady != true)
+        return;
+
+    int len = GetWindowTextLength(g_hWndEdit);
+    if (len > MAXCHATLEN)
+    {
+        wchar_t Buffer[MAX_PATH] = {};
+        GetWindowText(g_hWndEdit, Buffer, MAXCHATLEN + 1);
+        SetWindowText(g_hWndEdit, Buffer);
+        SendMessage(g_hWndEdit, EM_SETSEL, (WPARAM)MAXCHATLEN, (LPARAM)MAXCHATLEN);
+    }
+}
+
+void CServerManager::ShowChattings(HDC hDC)
+{
+    DWORD CurrTime = CMainGame::Get_Instance()->GetCurrTime();
+
+    HPEN TempRedPen = CreatePen(1, 1, RGB(255, 0, 0));
+    HPEN TempHoldPen = {};
+    bool bPenChanged = false;
+
+    int Index = 0;
+    for (deque<ChattingMessageDesc>::iterator Itr = m_Chattings.begin(); Itr != m_Chattings.end(); ++Itr)
+    {
+        if ((CurrTime - (*Itr).SendedTime) > MAXCHATTINGSHOW)
+        {
+            Itr = m_Chattings.erase(Itr);
+
+            if (Itr == m_Chattings.end())
+                break;
+
+            ++Index;
+            //Sys Msg = Rend Pen
+            //User Msg = Black Pen
+            switch ((*Itr).eType)
+            {
+            case MSGType::Sys:
+                bPenChanged = true;
+                TempHoldPen = (HPEN)SelectObject(hDC, TempRedPen);
+                break;
+            case MSGType::User:
+                break;
+            default:
+                break;
+            }
+
+            TextOut(hDC, WINCX / 2, WINCY / 2 + (MESSAGEYDIFF * Index), (*Itr).Message.c_str(), (*Itr).Message.size());
+
+            if (bPenChanged)
+                TempHoldPen = (HPEN)SelectObject(hDC, TempHoldPen);
+        }
+    }
+
+    DeleteObject(TempRedPen);
+
+}
+
+void CServerManager::Render(HDC hDC)
+{
+    ShowChattings(hDC);
 }
 
 PlayingRoomSessionDesc* CServerManager::GetRoomDescPtr()
@@ -360,12 +507,54 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
     }
 
         break;
+    case PREDATA::OrderType::HEARTBEAT:
+        break;
+    case PREDATA::OrderType::CLIENTCHATSHOOT:
+        break;
+    case PREDATA::OrderType::SERVERCHATSHOOT:
+    {
+        char* Casted = static_cast<char*>(Data);
+
+        MSGType TempType = {};
+        int UserIndex = -1;
+        char TempCharBuffer[MAXCHATLEN_TOC] = {};
+
+        memcpy(&TempType, Casted, sizeof(TempType));
+        memcpy(&UserIndex, &Casted[sizeof(TempType)], sizeof(UserIndex));
+        memcpy(&TempCharBuffer, &Casted[sizeof(TempType) + sizeof(TempType)], DataSize - (sizeof(TempType) + sizeof(TempType)));
+        
+        wchar_t TempWCharBuffer[MAXCHATLEN] = {};
+        MultiByteToWideChar(CP_ACP, 0, TempCharBuffer, -1, &TempWCharBuffer[0], strlen(TempCharBuffer));
+
+        wchar_t CompleteString[CMPCHAT] = {};
+
+        switch (TempType)
+        {
+        case MSGType::Sys:
+            wsprintf(CompleteString, L"System : %s", TempWCharBuffer);
+            break;
+        case MSGType::User:
+            wsprintf(CompleteString, L"Player [%d] : %s", UserIndex, TempWCharBuffer);
+            break;
+        case MSGType::END:
+            break;
+        default:
+            break;
+        }
+
+        m_Chattings.push_back(ChattingMessageDesc
+        (
+            TempType,
+            CompleteString,
+            CMainGame::Get_Instance()->GetCurrTime()
+        ));
+    }
+        break;
 
 	default:
     {
         SR1_MSGBOX("Wrong Message");
         Ret = true;
-        int a = 10;
     }
 		break;
 	}

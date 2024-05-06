@@ -2,6 +2,18 @@
 #include "Include.h"
 #include "Obj.h"
 
+struct ChattingMessageDesc
+{
+	ChattingMessageDesc(MSGType Type, wchar_t* Buffer, DWORD SendTime)
+		: eType()
+		, Message(Buffer)
+		, SendedTime(SendTime) {}
+
+	MSGType eType = MSGType::END;
+	wstring Message;
+	DWORD SendedTime;
+};
+
 class CCaseHoles;
 class CServerManager
 {
@@ -14,6 +26,14 @@ public:
 	void	Release();
 	void	InitServer();
 
+
+	bool ChattingLengthCheck();
+	void ChattingShowOn();
+	void ChattingUpdate();
+	void ShowChattings(HDC hDC);
+	void Render(HDC hDC);
+
+
 	bool GetClientConnected() { return m_bClientConnected; }
 	int GetServerUser() { return m_iCurrUser; }
 	float GetCurrentAngle() {return m_fCurrAngle;}
@@ -23,6 +43,7 @@ public:
 	ClientSession* GetSession() { return m_pSession; }
 	PlayingRoomSessionDesc* GetRoomDescPtr();
 	PlayingRoomSessionDesc& GetRoomDesc() { return m_tRoomDesc; }
+	
 public:
 
 public:
@@ -81,6 +102,10 @@ private:
 	float m_fPrevAngle = 0.0;
 	int m_iCurrentPlayer = -1;
 	vector<bool> m_HoleVector;
+	bool m_bIsChatReady = false;
+
+	deque<ChattingMessageDesc> m_Chattings;
+
 public:
 	void SetHoleVecPtr(vector<CCaseHoles*>* Ptr) 
 	{

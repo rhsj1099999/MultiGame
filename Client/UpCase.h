@@ -23,12 +23,6 @@ class CUpCase : public CObj
 public: // Data
 public: // Func
 	CUpCase();
-	//virtual void		Initialize(void)PURE;
-	//virtual int			Update(void)PURE;
-	//virtual void		Late_Update(void)PURE;
-	//virtual void		Render(HDC hDC)PURE;
-	//virtual void		Release(void)PURE;
-
 	void SetIsStageEnd(const bool& parmBool)
 	{
 		this->m_bIsStageEnd = parmBool;
@@ -43,5 +37,7 @@ public: // Func
 	virtual void Render(HDC hDC) override;
 	virtual void Release() override;
 	virtual void Cal_WorldMatrix() override;
+	
+
 };
 

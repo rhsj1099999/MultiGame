@@ -12,3 +12,6 @@
 #define			OBJ_DEAD	1
 
 extern		HWND	g_hWnd;
+extern		HINSTANCE	g_hInstance;
+extern		HWND g_hWndEdit;
+extern      LONG_PTR g_Proc;

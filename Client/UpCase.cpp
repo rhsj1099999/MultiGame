@@ -48,7 +48,7 @@ void CUpCase::Initialize()
 
 	int Horizontal = 15;
 	int Vertical = 3;
-	
+	int DebugLastIndex = 0;
 	for (int i = 0; i < Horizontal; i++)
 	{
 		for (int j = 0; j < Vertical; j++)
@@ -65,8 +65,13 @@ void CUpCase::Initialize()
 
 			this->m_HolesPtrVector.push_back(TempCastPtr);
 			TempCastPtr->SetHoleIndex((i * Vertical) + j);
+			DebugLastIndex = (i * Vertical) + j;
 		}
 	}
+
+	int a = 10;
+	
+
 	if (m_bIsServerMode == true)
 	{
 		CServerManager::Get_Instance()->SetHoleVecPtr(&m_HolesPtrVector);
@@ -82,7 +87,7 @@ void CUpCase::Initialize()
 	int TempSizeInt = static_cast<int>(this->m_HolesPtrVector.size());
 	int GetMoneyInt = rand() % TempSizeInt;
 	int LoseMoneyInt = 0;
-	while (1)
+	while (true)
 	{
 		LoseMoneyInt = rand() % TempSizeInt;
 		if (GetMoneyInt != LoseMoneyInt)
@@ -143,38 +148,7 @@ int CUpCase::Update()
 
 					TempData.Angle = m_fAngle;
 
-					CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
-
-					bool bTempMessageSend = false;
-					if (pSession->CQPtr->GetSize() == 0)
-						bTempMessageSend = true;
-
-					pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
-					(
-						sizeof(PAK_ROTATEANGLE),
-						PREDATA::OrderType::ROTATEANGLE
-					));
-					pSession->CQPtr->Enqueqe_Instance<PAK_ROTATEANGLE>(TempData);
-
-					if (bTempMessageSend == true)
-					{
-						DWORD recvLen = 0;
-						DWORD flag = 0;
-						pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
-						pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
-						if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
-						{
-							if (WSAGetLastError() != WSAEWOULDBLOCK)
-							{
-								SR1_MSGBOX("EWOULDBLOCK In Client. UpCase");
-							}
-
-							if (WSAGetLastError() != WSA_IO_PENDING)
-							{
-								//closesocket(pSession->soc);
-							}
-						}
-					}
+					MySend<PAK_ROTATEANGLE>(pSession, TempData, PREDATA::OrderType::ROTATEANGLE);
 				}
 				
 				CServerManager::Get_Instance()->SetCurrentAngle(m_fAngle);
@@ -187,6 +161,9 @@ int CUpCase::Update()
 	}
 	else
 	{
+
+
+
 		if (CKeyMgr::Get_Instance()->Key_Pressing('Q'))
 		{
 			m_fAngle += m_fAngleSpeed;

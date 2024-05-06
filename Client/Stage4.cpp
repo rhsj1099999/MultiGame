@@ -31,7 +31,7 @@ void CStage4::Initialize()
 
 void CStage4::Update()
 {
-	if (CKeyMgr::Get_Instance()->Key_Down(VK_RETURN))
+	if (CKeyMgr::Get_Instance()->Key_Down(VK_ESCAPE))
 	{
 		CSceneMgr::Get_Instance()->Scene_Change(SC_WORLDMAP);
 	}

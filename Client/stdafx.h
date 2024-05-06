@@ -30,6 +30,7 @@
 #include <string>
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <deque>
 
 #include <d3d9.h>
 #include <d3dx9.h>

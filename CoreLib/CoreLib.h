@@ -13,6 +13,9 @@ using namespace std;
 
 #define CLIENT3 3
 #define CLIENT1 1
+#define MAXCHATLEN 32
+#define MAXCHATLEN_TOC 64
+#define CMPCHAT 80
 
 #define BUF64 64
 #define BUF128 128
@@ -23,8 +26,16 @@ using namespace std;
 #define BUFSIZE 100
 #define BUFSIZE_100 100
 #define BUFSIZE_1000 1000
+#define MAXCHATTINGSHOW 5000
 
+#define MESSAGEYDIFF 10
 
+enum class MSGType
+{
+    Sys,
+    User,
+    END,
+};
 
 struct Session
 {
@@ -69,6 +80,9 @@ struct PREDATA
         PLAYERBLADEINSERTTRY,
         PLAYERBLADEINSERTED,
         FOLLOWINDEX,
+        HEARTBEAT,
+        SERVERCHATSHOOT,
+        CLIENTCHATSHOOT,
         END, //ERROR
     };
 
@@ -317,34 +331,15 @@ struct ClientSession
 
     mutex WSAMutex_Send = {};
     mutex WSAMutex_Recv = {};
-
-public:
-    int Lock_WSASend(_In_reads_(dwBufferCount) LPWSABUF lpBuffers,
-        _In_ DWORD dwBufferCount,
-        _Out_opt_ LPDWORD lpNumberOfBytesSent,
-        _In_ DWORD dwFlags,
-        _Inout_opt_ LPWSAOVERLAPPED lpOverlapped,
-        _In_opt_ LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine)
-    {
-        WSAMutex_Send.lock();
-        int Ret = WSASend(soc, lpBuffers, dwBufferCount, lpNumberOfBytesSent, dwFlags, lpOverlapped, lpCompletionRoutine);
-        WSAMutex_Send.unlock();
-        return Ret;
-    }
-    int Lock_WSARecv(_In_reads_(dwBufferCount) __out_data_source(NETWORK) LPWSABUF lpBuffers,
-        _In_ DWORD dwBufferCount,
-        _Out_opt_ LPDWORD lpNumberOfBytesRecvd,
-        _Inout_ LPDWORD lpFlags,
-        _Inout_opt_ LPWSAOVERLAPPED lpOverlapped,
-        _In_opt_ LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine)
-    {
-        
-        WSAMutex_Recv.lock();
-        int Ret = WSARecv(soc, lpBuffers, dwBufferCount, lpNumberOfBytesRecvd, lpFlags, lpOverlapped, lpCompletionRoutine);
-        WSAMutex_Recv.unlock();
-        return Ret;
-    }
 };
+
+
+
+
+
+
+
+
 
 template<typename T>
 void MySend(ClientSession* pSession, T& Instance, PREDATA::OrderType Type)
@@ -379,6 +374,7 @@ void MySend(ClientSession* pSession, T& Instance, PREDATA::OrderType Type)
     }
 }
 
+void MySend_Ptr(ClientSession* pSession, void* Ptr, int Size, PREDATA::OrderType Type);
 
 
 

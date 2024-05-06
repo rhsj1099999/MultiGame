@@ -33,10 +33,12 @@ void CMainGame::Initialize(void)
 
 }
 
-void CMainGame::Update(void)
+void CMainGame::Update(DWORD dwCurrTime)
 {
+	m_dwCurrTime = dwCurrTime;
 	CKeyMgr2::Get_Instance()->Update();
 	CSceneMgr::Get_Instance()->Update();
+	CServerManager::Get_Instance()->Update();
 }
 
 void CMainGame::Late_Update()

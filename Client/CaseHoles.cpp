@@ -59,8 +59,6 @@ int CCaseHoles::Update()
 #pragma region MyTurn
 			if (CKeyMgr::Get_Instance()->Key_Pressing(VK_LBUTTON))
 			{
-				return 0;
-
 				GetCursorPos(&m_MouseClickedPoint);
 				ScreenToClient(g_hWnd, &m_MouseClickedPoint);
 				if (PtInRect(&this->m_InsertArea, m_MouseClickedPoint) == true)
@@ -82,38 +80,11 @@ int CCaseHoles::Update()
 
 					PAK_BLADEINSERT TempData = {};
 
-					CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
-
-					bool bTempMessageSend = false;
-					if (pSession->CQPtr->GetSize() == 0)
-						bTempMessageSend = true;
-
 					TempData.RoomSessionDesc = CServerManager::Get_Instance()->GetRoomDesc();
 
 					TempData.Index = m_iHoleIndex;
 
-					pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
-					(
-						sizeof(PAK_BLADEINSERT),
-						PREDATA::OrderType::PLAYERBLADEINSERTED
-					));
-					pSession->CQPtr->Enqueqe_Instance<PAK_BLADEINSERT>(TempData);
-
-
-					if (bTempMessageSend == true)
-					{
-						DWORD recvLen = 0;
-						DWORD flag = 0;
-						pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
-						pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
-						if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
-						{
-							if (WSAGetLastError() != WSA_IO_PENDING)
-							{
-								closesocket(pSession->soc);
-							}
-						}
-					}
+					MySend<PAK_BLADEINSERT>(pSession, TempData, PREDATA::OrderType::PLAYERBLADEINSERTED);
 				}
 			}
 #pragma endregion MyTurn
