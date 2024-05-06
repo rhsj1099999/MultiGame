@@ -6,6 +6,9 @@
 #include <iostream>
 #pragma comment(lib, "ws2_32.lib")
 
+#define MSGBOX(MESSAGE) MessageBox(0, TEXT(MESSAGE), TEXT("Fail_"), MB_OK)
+#define MSGBOX2(MESSAGE) MessageBox(0, MESSAGE, TEXT("Fail_"), MB_OK)
+
 using namespace std;
 
 #define CLIENT3 3
@@ -342,6 +345,39 @@ public:
         return Ret;
     }
 };
+
+template<typename T>
+void MySend(ClientSession* pSession, T& Instance, PREDATA::OrderType Type)
+{
+    CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
+
+    bool bTempMessageSend = false;
+    if (pSession->CQPtr->GetSize() == 0)
+        bTempMessageSend = true;
+
+    pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+    (
+        sizeof(T),
+        Type
+    ));
+    pSession->CQPtr->Enqueqe_Instance<T>(Instance);
+
+    if (bTempMessageSend == true)
+    {
+        DWORD recvLen = 0;
+        DWORD flag = 0;
+        pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
+        pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
+        if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
+        {
+            int ERR = WSAGetLastError();
+            if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
+            {
+                MSGBOX("Error_MySend. Not EWB, PENDING");
+            }
+        }
+    }
+}
 
 
 

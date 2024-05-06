@@ -62,37 +62,39 @@ void CPlayingRoom::Init(ClientSession* pThreeSession[], list<ClientSession*>& pR
 
         ClientSession* pSession = m_arrClients[i];
 
-        CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
+        MySend<int>(pSession, m_iPlayingOrder, PREDATA::OrderType::TURNCHANGED);
 
-        bool bTempMessageSend = false;
-        if (pSession->CQPtr->GetSize() == 0)
-            bTempMessageSend = true;
+        //CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
 
-        pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
-        (
-            sizeof(int),
-            PREDATA::OrderType::TURNCHANGED
-        ));
-        pSession->CQPtr->Enqueqe_Instance<__int32>(m_iPlayingOrder);
+        //bool bTempMessageSend = false;
+        //if (pSession->CQPtr->GetSize() == 0)
+        //    bTempMessageSend = true;
 
-        if (bTempMessageSend == true)
-        {
-            DWORD recvLen = 0;
-            DWORD flag = 0;
-            pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
-            pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
-            if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
-            {
-                //if (WSAGetLastError() != WSA_IO_PENDING)
-                //{
-                //    closesocket(pSession->soc);
-                //}
-                if (WSAGetLastError() != WSAEWOULDBLOCK)
-                {
-                    SR1_MSGBOX("EWOULDBLOCK In Send Server");
-                }
-            }
-        }
+        //pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+        //(
+        //    sizeof(int),
+        //    PREDATA::OrderType::TURNCHANGED
+        //));
+        //pSession->CQPtr->Enqueqe_Instance<__int32>(m_iPlayingOrder);
+
+        //if (bTempMessageSend == true)
+        //{
+        //    DWORD recvLen = 0;
+        //    DWORD flag = 0;
+        //    pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
+        //    pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
+        //    if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
+        //    {
+        //        //if (WSAGetLastError() != WSA_IO_PENDING)
+        //        //{
+        //        //    closesocket(pSession->soc);
+        //        //}
+        //        if (WSAGetLastError() != WSAEWOULDBLOCK)
+        //        {
+        //            SR1_MSGBOX("EWOULDBLOCK In Send Server");
+        //        }
+        //    }
+        //}
 
     }
 }
