@@ -1,7 +1,6 @@
 #pragma once
 
-#define MAXTIMEOUT 250000
-#define MAXLATECOUNT 2
+
 
 
 
@@ -69,6 +68,8 @@ private:
 	---------------*/
 	bool m_bClientConnected = false;
 	int m_iCurrUser = 0; //At Least Me
+
+	mutex m_ClassDataLock = {};
 
 };
 

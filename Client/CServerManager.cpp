@@ -158,10 +158,7 @@ CServerManager::~CServerManager()
 
 int CServerManager::Update()
 {
-    //if (m_bClientConnected == false)
-    //    return 0;
-
-    //HeartBit
+    SendHeartBeat();
 
     ChattingUpdate();
  
@@ -268,7 +265,7 @@ void CServerManager::InitServer()
                 pSession->wsaBuf_Recv.len = sizeof(PREDATA);
                 CreateIoCompletionPort((HANDLE)m_Socket, m_IOCPHandle, /*Key*/(ULONG_PTR)pSession, 0); //등록할때는
 
-                pSession->CQPtr = new CMyCQ(256);
+                pSession->CQPtr = new CMyCQ(BUF384);
 
                 DWORD recvLen = 0;
                 DWORD flag = 0;
@@ -290,10 +287,6 @@ void CServerManager::InitServer()
 
 bool CServerManager::ChattingLengthCheck()
 {
-    //if (m_bIsChatReady == false)
-    //    return false;
-
-    //int a = 10;
     return true;
 }
 
@@ -307,17 +300,15 @@ void CServerManager::ChattingShowOn()
 
 void CServerManager::ChattingUpdate()
 {
-    //Chatting
     if (g_hWndEdit == NULL)
     {
         g_hWndEdit = CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", L"", WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
             50, 50, 200, 30, g_hWnd, NULL, g_hInstance, NULL);
 
         ShowWindow(g_hWndEdit, SW_HIDE);
-        //int Ret = SetWindowLongPtr(g_hWndEdit, GWLP_WNDPROC, (LONG_PTR)g_Proc);
     }
 
-    if (CKeyMgr::Get_Instance()->Key_Down(VK_RETURN))
+    if (CKeyMgr::Get_Instance()->Key_Down(VK_RETURN) && GetForegroundWindow() == g_hWnd)
     {
         if (m_bIsChatReady == false)
         {
@@ -343,18 +334,16 @@ void CServerManager::ChattingUpdate()
                 }
             }
 
-            //if (Buffer_Char[0] != '\0' && bIsOnlyBlank == false && m_bClientConnected == true)
-            //    MySend_Ptr(m_pSession, Buffer_Char, Byte, PREDATA::OrderType::CHATSEND);
-
             if (Buffer_Char[0] != '\0' && bIsOnlyBlank == false && m_bClientConnected == true)
             {
                 char TempPacketPtr[MAX_PATH] = {};
                 MSGType TempMsgType = MSGType::User;
+                int Debug = sizeof(TempMsgType);
                 memcpy(TempPacketPtr, &TempMsgType, sizeof(TempMsgType));
+                Debug = sizeof(m_tRoomDesc);
                 memcpy(&TempPacketPtr[sizeof(TempMsgType)], &m_tRoomDesc, sizeof(m_tRoomDesc));
                 memcpy(&TempPacketPtr[sizeof(TempMsgType) + sizeof(m_tRoomDesc)], &Buffer_Char, Byte);
-                MySend_Ptr(m_pSession, TempPacketPtr, Byte + sizeof(TempMsgType), PREDATA::OrderType::CLIENTCHATSHOOT);
-
+                MySend_Ptr(m_pSession, TempPacketPtr, Byte + sizeof(TempMsgType) + sizeof(m_tRoomDesc) + NULLSIZE, PREDATA::OrderType::CLIENTCHATSHOOT);
             }
 
             SetWindowText(g_hWndEdit, L"");
@@ -397,27 +386,26 @@ void CServerManager::ShowChattings(HDC hDC)
 
             if (Itr == m_Chattings.end())
                 break;
-
-            ++Index;
-            //Sys Msg = Rend Pen
-            //User Msg = Black Pen
-            switch ((*Itr).eType)
-            {
-            case MSGType::Sys:
-                bPenChanged = true;
-                TempHoldPen = (HPEN)SelectObject(hDC, TempRedPen);
-                break;
-            case MSGType::User:
-                break;
-            default:
-                break;
-            }
-
-            TextOut(hDC, WINCX / 2, WINCY / 2 + (MESSAGEYDIFF * Index), (*Itr).Message.c_str(), (*Itr).Message.size());
-
-            if (bPenChanged)
-                TempHoldPen = (HPEN)SelectObject(hDC, TempHoldPen);
         }
+        ++Index;
+        //Sys Msg = Rend Pen
+        //User Msg = Black Pen
+        switch ((*Itr).eType)
+        {
+        case MSGType::Sys:
+            bPenChanged = true;
+            TempHoldPen = (HPEN)SelectObject(hDC, TempRedPen);
+            break;
+        case MSGType::User:
+            break;
+        default:
+            break;
+        }
+
+        TextOut(hDC, 10, WINCY / 2 - (MESSAGEYDIFF * Index), (*Itr).Message.c_str(), (*Itr).Message.size());
+
+        if (bPenChanged)
+            TempHoldPen = (HPEN)SelectObject(hDC, TempHoldPen);
     }
 
     DeleteObject(TempRedPen);
@@ -426,7 +414,24 @@ void CServerManager::ShowChattings(HDC hDC)
 
 void CServerManager::Render(HDC hDC)
 {
-    ShowChattings(hDC);
+    if (m_bClientConnected == true)
+    {
+        ShowChattings(hDC);
+    }
+}
+
+void CServerManager::SendHeartBeat()
+{
+    if (m_bClientConnected == false)
+        return;
+
+    m_dwHeartBitCounter += CMainGame::Get_Instance()->GetDeltaTime();
+
+    if (m_dwHeartBitCounter >= SENDHEARTBEATCYCLE)
+    {
+        bool bTempIMALIVE = true;
+        MySend<bool>(m_pSession, bTempIMALIVE, PREDATA::OrderType::HEARTBEAT);
+    }
 }
 
 PlayingRoomSessionDesc* CServerManager::GetRoomDescPtr()
@@ -460,11 +465,10 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
         m_iCurrUser = 1;
         CSceneMgr::Get_Instance()->Scene_Change(SC_STAGE4, true);
 
-        /*RoomDesc*/
         PlayingRoomSessionDesc* pCast = static_cast<PlayingRoomSessionDesc*>(Data);
         CServerManager::Get_Instance()->SetRoomDesc(pCast);
         m_HoleVector.clear();
-        m_HoleVector.resize(45, true);
+        m_HoleVector.resize(HOLE_HORIZON * HOLE_VERTICAL, true);
     }
 
         break;
@@ -517,14 +521,14 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
 
         MSGType TempType = {};
         int UserIndex = -1;
-        char TempCharBuffer[MAXCHATLEN_TOC] = {};
+        char TempCharBuffer[MAXCHATLEN_TOC + NULLSIZE] = {};
 
         memcpy(&TempType, Casted, sizeof(TempType));
         memcpy(&UserIndex, &Casted[sizeof(TempType)], sizeof(UserIndex));
         memcpy(&TempCharBuffer, &Casted[sizeof(TempType) + sizeof(TempType)], DataSize - (sizeof(TempType) + sizeof(TempType)));
         
-        wchar_t TempWCharBuffer[MAXCHATLEN] = {};
-        MultiByteToWideChar(CP_ACP, 0, TempCharBuffer, -1, &TempWCharBuffer[0], strlen(TempCharBuffer));
+        wchar_t TempWCharBuffer[MAXCHATLEN + NULLSIZE] = {};
+        MultiByteToWideChar(CP_UTF8, 0, TempCharBuffer, -1, &TempWCharBuffer[0], strlen(TempCharBuffer));
 
         wchar_t CompleteString[CMPCHAT] = {};
 
@@ -542,7 +546,7 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
             break;
         }
 
-        m_Chattings.push_back(ChattingMessageDesc
+        m_Chattings.push_front(ChattingMessageDesc
         (
             TempType,
             CompleteString,

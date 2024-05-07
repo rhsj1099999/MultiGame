@@ -159,21 +159,16 @@ void CMainServer::ConnectTry()
     pSession->LateCount = 0;
     pSession->eClientState = ClientSession::ClientState::WAITING;
     m_liClientSockets.push_back(pSession);
-    pSession->CQPtr = new CMyCQ(256);
+    pSession->CQPtr = new CMyCQ(BUF384);
     m_queWaitingQueue.push(pSession);
     CreateIoCompletionPort((HANDLE)ClientSocket, m_IOCPHandle, /*Key*/(ULONG_PTR)pSession, 0);
 
-    m_iCurrUser = static_cast<__int32>(m_liClientSockets.size());
+    {
+        CMyCQ::LockGuard Temp(m_ClassDataLock);
+        m_iCurrUser = static_cast<__int32>(m_liClientSockets.size());
+    }
 
     cout << "Client Connected Users : " << m_iCurrUser << endl;
-
-    CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
-    pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
-    (
-        sizeof(int),
-        PREDATA::OrderType::USERCOUNT
-    ));
-    pSession->CQPtr->Enqueqe_Instance<__int32>(m_iCurrUser);
 
     pSession->ByteToSent = pSession->CQPtr->GetSize();
     pSession->wsaBuf_Send.buf = pSession->CQPtr->GetBuffer();
@@ -187,7 +182,15 @@ void CMainServer::ConnectTry()
 
     DWORD recvLen = 0;
     DWORD flag = 0;
-    WSASend(pSession->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &pSession->Overlapped_Send, NULL);
+
+    for (ClientSession* pCS : m_liClientSockets)
+    {
+        if (pCS->PlayingRoomPtr != nullptr)
+            continue;
+
+        MySend<int>(pCS, m_iCurrUser, PREDATA::OrderType::USERCOUNT);
+    }
+    
     WSARecv(pSession->soc, &pSession->wsaBuf_Recv, 1, &recvLen, &flag, &pSession->Overlapped_Recv, NULL);
 }
 
@@ -209,6 +212,31 @@ void CMainServer::LiveCheck()
 
             if ((*Itr)->LateCount > MAXLATECOUNT)
             {
+                //Client Is Dead
+
+                /*---------------
+                Critical Areas
+                -----------------
+
+                PlayingRoom 
+                    Send Chatting : Client Is Dead
+                    Room : TurnChange Except (One of Array Ele Is Nullptr
+
+                WatingQueue
+                    Find And Erase ()
+
+                Client
+                    Not Shutdown Just Go to World Map = Rewind CServerManager
+
+                ZombieProcess
+                ----------------*/
+
+
+
+
+
+
+
                 closesocket((*Itr)->soc);
 
                 delete (*Itr);
@@ -520,12 +548,20 @@ void CMainServer::WorkerEntry_D(HANDLE hHandle)
                     else
                     {
                         //데이터를 다 읽었다.
-                        ExecuetionMessage
-                        (
-                            pSession->pLatestHead.eOrderType,
-                            pSession->recvBuffer,
-                            pSession->pLatestHead.iSizeStandby
-                        );
+                        if (pSession->pLatestHead.eOrderType == PREDATA::OrderType::HEARTBEAT)
+                        {
+                            pSession->Respones = CTimer::GetInstance()->GetCurrTime();
+                        }
+                        else
+                        {
+                            ExecuetionMessage
+                            (
+                                pSession->pLatestHead.eOrderType,
+                                pSession->recvBuffer,
+                                pSession->pLatestHead.iSizeStandby
+                            );
+                        }
+
                         pSession->bHeaderTransferred = false;
                         pSession->ByteTransferred = 0;
                         pSession->ByteToRead = sizeof(PREDATA);

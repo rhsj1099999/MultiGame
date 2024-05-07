@@ -52,9 +52,9 @@ C:\Users\rhsj\Desktop\MultiGame\Client\CaseHoles.cpp(228,26): warning C4244: '�
 C:\Users\rhsj\Desktop\MultiGame\Client\CaseHoles.cpp(227,23): warning C4244: '인수': 'float'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
   CollisionMgr.cpp
   CServerManager.cpp
-C:\Users\rhsj\Desktop\MultiGame\Client\CServerManager.cpp(334,62): warning C4267: '초기화 중': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\Users\rhsj\Desktop\MultiGame\Client\CServerManager.cpp(416,118): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\Users\rhsj\Desktop\MultiGame\Client\CServerManager.cpp(527,103): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\rhsj\Desktop\MultiGame\Client\CServerManager.cpp(325,62): warning C4267: '초기화 중': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\rhsj\Desktop\MultiGame\Client\CServerManager.cpp(405,107): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\rhsj\Desktop\MultiGame\Client\CServerManager.cpp(531,104): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
   DownCase.cpp
 C:\Users\rhsj\Desktop\MultiGame\Client\DownCase.cpp(19,20): warning C4244: '초기화 중': 'double'에서 'float'(으)로 변환하면서 데이터가 손실될 수 있습니다.
 C:\Users\rhsj\Desktop\MultiGame\Client\DownCase.cpp(25,20): warning C4244: '초기화 중': 'double'에서 'float'(으)로 변환하면서 데이터가 손실될 수 있습니다.

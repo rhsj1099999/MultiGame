@@ -55,8 +55,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,			// 메모리에 할당되는 실체, 즉 
 
 
 
-	static CMainGame MainGame;
-	MainGame.Initialize();
+	/*static CMainGame MainGame;
+	MainGame.Initialize();*/
+
+    CMainGame* pMainGame = CMainGame::Get_Instance();
+    pMainGame->Initialize();
 
 	DWORD	dwOldTime = GetTickCount();
 
@@ -81,9 +84,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,			// 메모리에 할당되는 실체, 즉 
 
 			if (dwOldTime + 10 < CurrTime)
 			{
-				MainGame.Update(CurrTime);
-				MainGame.Late_Update();
-				MainGame.Render();
+                pMainGame->Update(CurrTime);
+                pMainGame->Late_Update();
+                pMainGame->Render();
 				dwOldTime = CurrTime;
 			}			
 		}       

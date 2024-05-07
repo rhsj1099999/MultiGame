@@ -31,11 +31,15 @@ void CMainGame::Initialize(void)
 	CUIMgr::Get_Instance()->Initialize();
 	CSceneMgr::Get_Instance()->Scene_Change(SCENEID::SC_WORLDMAP);
 
+	m_dwCurrTime = GetTickCount();
+	m_dwDeltaTime = GetTickCount();
 }
 
 void CMainGame::Update(DWORD dwCurrTime)
 {
+	m_dwDeltaTime = (dwCurrTime - m_dwCurrTime);
 	m_dwCurrTime = dwCurrTime;
+
 	CKeyMgr2::Get_Instance()->Update();
 	CSceneMgr::Get_Instance()->Update();
 	CServerManager::Get_Instance()->Update();
@@ -50,6 +54,7 @@ void CMainGame::Render(void)
 {
 	Rectangle(m_DCBackBuffer, 0, 0, WINCX, WINCY);
 	CSceneMgr::Get_Instance()->Render(m_DCBackBuffer);
+	CServerManager::Get_Instance()->Render(m_DCBackBuffer);
 	BitBlt(m_DC, 0, 0, WINCX, WINCY, m_DCBackBuffer, 0, 0, SRCCOPY);
 }
 

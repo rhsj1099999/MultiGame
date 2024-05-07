@@ -11,24 +11,34 @@
 
 using namespace std;
 
+#define HOLE_HORIZON 15
+#define HOLE_VERTICAL 3
+#define SENDHEARTBEATCYCLE 2000
+
 #define CLIENT3 3
+//#define CLIENT3 1
 #define CLIENT1 1
-#define MAXCHATLEN 32
-#define MAXCHATLEN_TOC 64
-#define CMPCHAT 80
+#define MAXCHATLEN 50
+#define MAXCHATLEN_TOC 100
+#define CMPCHAT 150
+#define NULLSIZE 1
 
 #define BUF64 64
 #define BUF128 128
 #define BUF256 256
+#define BUF384 384
 #define BUF512 512
 #define BUF1024 1024
 
 #define BUFSIZE 100
 #define BUFSIZE_100 100
 #define BUFSIZE_1000 1000
-#define MAXCHATTINGSHOW 5000
+#define MAXCHATTINGSHOW 4000
 
-#define MESSAGEYDIFF 10
+#define MESSAGEYDIFF 30
+
+#define MAXTIMEOUT 4000
+#define MAXLATECOUNT 2
 
 enum class MSGType
 {
@@ -83,6 +93,7 @@ struct PREDATA
         HEARTBEAT,
         SERVERCHATSHOOT,
         CLIENTCHATSHOOT,
+        SOMECLIENTDEAD,
         END, //ERROR
     };
 

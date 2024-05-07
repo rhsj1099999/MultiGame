@@ -32,6 +32,7 @@ public:
 	void ChattingUpdate();
 	void ShowChattings(HDC hDC);
 	void Render(HDC hDC);
+	void SendHeartBeat();
 
 
 	bool GetClientConnected() { return m_bClientConnected; }
@@ -64,8 +65,19 @@ public:
 			m_pInstance = nullptr;
 		}
 	}
+
+	void SetHoleVecPtr(vector<CCaseHoles*>* Ptr)
+	{
+		if (m_vecCaseHoles != nullptr)
+		{
+			SR1_MSGBOX("Init Wrong");
+		}
+		m_vecCaseHoles = Ptr;
+	}
+
 	bool GetMyTurn() { return m_bCanMove; }
 	void SetMyTurn(bool bTurn) { m_bCanMove = bTurn; }
+
 	void SetRoomDesc(PlayingRoomSessionDesc* Ptr)
 	{
 		m_tRoomDesc.MyNumber = (*Ptr).MyNumber;
@@ -105,17 +117,7 @@ private:
 	bool m_bIsChatReady = false;
 
 	deque<ChattingMessageDesc> m_Chattings;
-
-public:
-	void SetHoleVecPtr(vector<CCaseHoles*>* Ptr) 
-	{
-		if (m_vecCaseHoles != nullptr)
-		{
-			SR1_MSGBOX("Init Wrong");
-		}
-		m_vecCaseHoles = Ptr; 
-	}
 	vector<CCaseHoles*>* m_vecCaseHoles = nullptr;
-
+	DWORD m_dwHeartBitCounter = {};
 };
 
