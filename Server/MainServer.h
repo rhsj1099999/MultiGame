@@ -22,16 +22,6 @@ public:
 	void Init();
 	void Tick();
 
-
-public:
-	//int		Update();
-	//void	Late_Update();
-	//void	Release();
-	//void	InitServer();
-
-	//bool GetClientConnected() { return m_bClientConnected; }
-	//int GetServerUser() { return m_iCurrUser; }
-
 private:
 	void ConnectTry();
 	void TickWatingClients();
@@ -59,17 +49,18 @@ private:
 	ClientSession* m_pSession = nullptr;
 	HANDLE m_IOCPHandle = INVALID_HANDLE_VALUE;
 
-	list<ClientSession*> m_liClientSockets;
-	queue<ClientSession*> m_queWaitingQueue;
-	list<CPlayingRoom*> m_liPlayingRooms;
+
 
 	/*---------------
 		Data
 	---------------*/
 	bool m_bClientConnected = false;
-	int m_iCurrUser = 0; //At Least Me
+	int m_iCurrUser = 0;
 
 	mutex m_ClassDataLock = {};
+	list<ClientSession*> m_liClientSockets;
+	queue<ClientSession*> m_queWaitingQueue;
+	list<CPlayingRoom*> m_liPlayingRooms;
 
 };
 

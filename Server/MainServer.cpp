@@ -49,6 +49,7 @@ void CMainServer::Release()
 
 void CMainServer::Init()
 {
+
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa))
     {
@@ -70,7 +71,7 @@ void CMainServer::Init()
     unsigned long On = 1;
     ioctlsocket(m_Socket, FIONBIO, &On);
     bool bEnable = true;
-    setsockopt(m_Socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&bEnable, sizeof(bEnable));
+    //setsockopt(m_Socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&bEnable, sizeof(bEnable));
     setsockopt(m_Socket, IPPROTO_TCP, TCP_NODELAY, (const char*)&bEnable, sizeof(bEnable));
 
     SOCKADDR_IN m_ServerAddr;
@@ -110,11 +111,6 @@ void CMainServer::Tick()
     LiveCheck();
 
     MatchingRoom();
-
-    //for (CPlayingRoom* pRoom : m_liPlayingRooms)
-    //{
-    //    pRoom->Tick();
-    //}
 }
 
 CMainServer* CMainServer::GetInstance()
@@ -203,55 +199,47 @@ void CMainServer::TickWatingClients()
 void CMainServer::LiveCheck()
 {
     DWORD dwCurrTime = CTimer::GetInstance()->GetCurrTime();
+    DWORD recvLen = 0;
+    DWORD flag = 0;
+
+    bool bTempDead = false;
 
     for (list<ClientSession*>::iterator Itr = m_liClientSockets.begin(); Itr != m_liClientSockets.end(); ++Itr)
     {
-        if (abs(static_cast<int>((*Itr)->Respones - dwCurrTime)) > MAXTIMEOUT)
+        if ((*Itr)->soc == INVALID_SOCKET)
         {
-            ++(*Itr)->LateCount;
-
-            if ((*Itr)->LateCount > MAXLATECOUNT)
+            bTempDead = true;
+        }
+        else
+        {
+            if (abs(static_cast<int>((*Itr)->Respones - dwCurrTime)) > MAXTIMEOUT)
             {
-                //Client Is Dead
+                ++(*Itr)->LateCount;
 
-                /*---------------
-                Critical Areas
-                -----------------
-
-                PlayingRoom 
-                    Send Chatting : Client Is Dead
-                    Room : TurnChange Except (One of Array Ele Is Nullptr
-
-                WatingQueue
-                    Find And Erase ()
-
-                Client
-                    Not Shutdown Just Go to World Map = Rewind CServerManager
-
-                ZombieProcess
-                ----------------*/
-                if ((*Itr)->PlayingRoomPtr != nullptr)
-                    static_cast<CPlayingRoom*>((*Itr)->PlayingRoomPtr)->ClientDead((*Itr));
-                
-
-
-
-
-
-
-                closesocket((*Itr)->soc);
-
-                delete (*Itr);
-
-                Itr = m_liClientSockets.erase(Itr);
-
-                m_iCurrUser = static_cast<int>(m_liClientSockets.size());
-
-                cout << "Client TimeOut. Users : " << m_iCurrUser << endl;
-
-                if (Itr == m_liClientSockets.end())
-                    break;
+                if ((*Itr)->LateCount > MAXLATECOUNT)
+                    bTempDead = true;
             }
+        }
+
+        if (bTempDead)
+        {
+            CMyCQ::LockGuard Temp(m_ClassDataLock);
+
+            if ((*Itr)->PlayingRoomPtr != nullptr)
+                static_cast<CPlayingRoom*>((*Itr)->PlayingRoomPtr)->ClientDead((*Itr));
+
+            closesocket((*Itr)->soc);
+
+            delete (*Itr);
+
+            Itr = m_liClientSockets.erase(Itr);
+
+            m_iCurrUser = static_cast<int>(m_liClientSockets.size());
+
+            cout << "Client TimeOut. Users : " << m_iCurrUser << endl;
+
+            if (Itr == m_liClientSockets.end())
+                break;
         }
     }
 }
@@ -354,8 +342,6 @@ bool CMainServer::ExecuetionMessage(PREDATA::OrderType eType, void* pData, int D
 
         pRoom->ExecutionMessage_InRoom(eType, PacData, CharSize + sizeof(int) + sizeof(TempType));
     }
-
-
         break;
     case PREDATA::OrderType::SERVERCHATSHOOT:
         break;
@@ -364,6 +350,7 @@ bool CMainServer::ExecuetionMessage(PREDATA::OrderType eType, void* pData, int D
     default:
         break;
     }
+
     return Ret;
 }
 

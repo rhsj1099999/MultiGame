@@ -248,7 +248,7 @@ bool MySend_Ptr(ClientSession* pSession, void* Ptr, int Size, PREDATA::OrderType
             if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
             {
                 Return = false;
-                //MSGBOX("Error_MySend. Not EWB, PENDING");
+                closesocket(pSession->soc);
             }
         }
     }

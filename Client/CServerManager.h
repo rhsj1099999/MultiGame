@@ -15,6 +15,7 @@ struct ChattingMessageDesc
 };
 
 class CCaseHoles;
+class CPirateHead;
 class CServerManager
 {
 public:
@@ -33,6 +34,7 @@ public:
 	void ShowChattings(HDC hDC);
 	void Render(HDC hDC);
 	void SendHeartBeat();
+	void ConnectTry();
 
 
 	bool GetClientConnected() { return m_bClientConnected; }
@@ -118,14 +120,24 @@ private:
 
 	deque<ChattingMessageDesc> m_Chattings;
 	CRITICAL_SECTION m_ChatQueueCS = {};
+
+	bool m_bGameIsEnd = false;
+	bool m_bIMWIN = false;
+	int m_iWhoWins = -1;
+	DWORD m_dwConnectTrying = {};
+
 public:
 	void EnterCriticalSection_Chat() { EnterCriticalSection(&m_ChatQueueCS); }
 	void LeaveCriticalSection_Chat() { LeaveCriticalSection(&m_ChatQueueCS); }
 
+	bool GetGameEnd() { return m_bGameIsEnd; }
+	bool GetWin() { return m_bIMWIN; }
+	int GetWhoWin() { return m_iWhoWins; }
+	CPirateHead* SetPirateHeadPtr(CPirateHead* Ptr) { return m_pPirateHeadPtr = Ptr; }
 
+private:
+	CPirateHead* m_pPirateHeadPtr = nullptr;
 	vector<CCaseHoles*>* m_vecCaseHoles = nullptr;
 	DWORD m_dwHeartBitCounter = {};
-
-	
 };
 

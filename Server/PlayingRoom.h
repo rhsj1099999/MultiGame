@@ -18,6 +18,7 @@ private:
 	int m_iPlayingOrder = 0;
 	int m_iCurrPlayer = CLIENT3;
 	ClientSession* m_arrClients[CLIENT3] = { nullptr, };
+	int m_iAnswerHole = 0;
 
 
 	vector<bool> m_InsertedIndices; //Ä®ÀÌ ²ÅÈù°÷µé

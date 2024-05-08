@@ -19,10 +19,12 @@ class CUpCase : public CObj
 
 	vector<D3DXVECTOR3> m_LocalShadeVector;
 	vector<D3DXVECTOR3> m_WorldShadeVector;
+	CObj* m_pPirateHeadPtr = nullptr;
 
 public: // Data
 public: // Func
 	CUpCase();
+	CObj* GetPirateHeadPtr() { return m_pPirateHeadPtr; }
 	void SetIsStageEnd(const bool& parmBool)
 	{
 		this->m_bIsStageEnd = parmBool;

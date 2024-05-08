@@ -4,7 +4,7 @@
 #include "CaseHoles.h"
 #include "KeyMgr.h"
 #include "MainGame.h"
-
+#include "PirateHead.h"
 
 CServerManager* CServerManager::m_pInstance = nullptr;
 
@@ -158,6 +158,8 @@ CServerManager::~CServerManager()
 
 int CServerManager::Update()
 {
+    ConnectTry();
+
     SendHeartBeat();
 
     ChattingUpdate();
@@ -215,7 +217,7 @@ void CServerManager::InitServer()
 	unsigned long On = 1;
 	ioctlsocket(m_Socket, FIONBIO, &On);
 	bool bEnable = true;
-	setsockopt(m_Socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&bEnable, sizeof(bEnable));
+	//setsockopt(m_Socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&bEnable, sizeof(bEnable));
 	setsockopt(m_Socket, IPPROTO_TCP, TCP_NODELAY, (const char*)&bEnable, sizeof(bEnable));
 
 	if (m_Socket == INVALID_SOCKET)
@@ -228,63 +230,7 @@ void CServerManager::InitServer()
 	inet_pton(AF_INET, "127.0.0.1", &m_ServerAddr.sin_addr);
 	m_ServerAddr.sin_port = htons(7777);
 
-    while (true)
-    {
-        if (connect(m_Socket, (SOCKADDR*)&m_ServerAddr, sizeof(m_ServerAddr)) == SOCKET_ERROR)
-        {
-            if (WSAGetLastError() == WSAEWOULDBLOCK)
-            {
-                continue;
-            }
-
-            if (WSAGetLastError() == WSAEISCONN)
-            {
-                m_bClientConnected = true;
-                if (m_IOCPHandle == m_IOCPHandle)
-                {
-                    m_IOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
-                }
-                m_bClientConnected = true;
-                for (int i = 0; i < 10; i++)
-                {
-                    m_vecWorkerThreads.push_back(thread([=]()
-                        {
-                            WorkerEntry_D(m_IOCPHandle, nullptr);
-                        }));
-                }
-
-                ClientSession* pSession = new ClientSession;
-                m_pSession = pSession;
-                pSession->soc = m_Socket;
-                pSession->Overlapped_Send = {};
-                pSession->Overlapped_Recv = {};
-                pSession->eType = READ;
-
-
-                pSession->ByteTransferred = 0;
-                pSession->ByteToRead = sizeof(PREDATA);
-                pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
-                pSession->wsaBuf_Recv.len = sizeof(PREDATA);
-                CreateIoCompletionPort((HANDLE)m_Socket, m_IOCPHandle, /*Key*/(ULONG_PTR)pSession, 0); //등록할때는
-
-                pSession->CQPtr = new CMyCQ(BUF384);
-
-                DWORD recvLen = 0;
-                DWORD flag = 0;
-
-
-                if (WSARecv(pSession->soc, &pSession->wsaBuf_Recv, 1, &recvLen, &flag, &pSession->Overlapped_Recv, NULL) == SOCKET_ERROR)
-                {
-                    int ERR = WSAGetLastError();
-                    if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
-                    {
-                        MSGBOX("WOD Client RECV / Error_MySend. Not EWB, PENDING");
-                    }
-                }
-                break;
-            }
-        }
-    }
+ 
 }
 
 bool CServerManager::ChattingLengthCheck()
@@ -433,6 +379,67 @@ void CServerManager::SendHeartBeat()
     }
 }
 
+void CServerManager::ConnectTry()
+{
+    if (m_bClientConnected == true)
+        return;
+
+    if (connect(m_Socket, (SOCKADDR*)&m_ServerAddr, sizeof(m_ServerAddr)) == SOCKET_ERROR)
+    {
+        if (WSAGetLastError() == WSAEWOULDBLOCK)
+        {
+            return;
+        }
+
+        if (WSAGetLastError() == WSAEISCONN)
+        {
+            m_bClientConnected = true;
+            if (m_IOCPHandle == m_IOCPHandle)
+            {
+                m_IOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
+            }
+            m_bClientConnected = true;
+            for (int i = 0; i < 10; i++)
+            {
+                m_vecWorkerThreads.push_back(thread([=]()
+                    {
+                        WorkerEntry_D(m_IOCPHandle, nullptr);
+                    }));
+            }
+
+            ClientSession* pSession = new ClientSession;
+            m_pSession = pSession;
+            pSession->soc = m_Socket;
+            pSession->Overlapped_Send = {};
+            pSession->Overlapped_Recv = {};
+            pSession->eType = READ;
+
+
+            pSession->ByteTransferred = 0;
+            pSession->ByteToRead = sizeof(PREDATA);
+            pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
+            pSession->wsaBuf_Recv.len = sizeof(PREDATA);
+            CreateIoCompletionPort((HANDLE)m_Socket, m_IOCPHandle, /*Key*/(ULONG_PTR)pSession, 0); //등록할때는
+
+            pSession->CQPtr = new CMyCQ(BUF384);
+
+            DWORD recvLen = 0;
+            DWORD flag = 0;
+
+
+            if (WSARecv(pSession->soc, &pSession->wsaBuf_Recv, 1, &recvLen, &flag, &pSession->Overlapped_Recv, NULL) == SOCKET_ERROR)
+            {
+                int ERR = WSAGetLastError();
+                if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
+                {
+                    MSGBOX("WOD Client RECV / Error_MySend. Not EWB, PENDING");
+                }
+            }
+            return;
+        }
+    }
+}
+
 PlayingRoomSessionDesc* CServerManager::GetRoomDescPtr()
 {
     if (m_tRoomDesc.MyNumber == -1)
@@ -548,6 +555,39 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
             CMainGame::Get_Instance()->GetCurrTime()
         ));
         LeaveCriticalSection_Chat();
+    }
+        break;
+
+    case PREDATA::OrderType::GAMEEND:
+    {
+        m_bGameIsEnd = true;
+
+        if (m_pPirateHeadPtr != nullptr)
+        {
+            m_pPirateHeadPtr->SetForcedGoUp(true);
+        }
+
+        char* Casted = static_cast<char*>(Data);
+
+        int Inserted = 0;
+        int WhoWins = 0;
+
+        memcpy(&Inserted, Casted, sizeof(int));
+        memcpy(&WhoWins, &Casted[sizeof(int)], sizeof(int));
+
+        m_iWhoWins = WhoWins;
+
+        m_HoleVector[Inserted] = false;
+        (*m_vecCaseHoles)[Inserted]->SetIsInserted(true, WhoWins);
+
+        m_bCanMove = false;
+
+        if (m_tRoomDesc.MyNumber == WhoWins)
+        {
+            //Effect
+            m_bIMWIN = true;
+        }
+
     }
         break;
 

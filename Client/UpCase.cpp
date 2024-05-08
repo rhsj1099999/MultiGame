@@ -46,26 +46,28 @@ void CUpCase::Initialize()
 	}
 	m_tInfo.vPos = { 400,300,0.0f };
 
-	int Horizontal = 15;
-	int Vertical = 3;
+	float fRotateEach = 360.0f / HOLE_HORIZON;
+	float fEachVerticalOffset = 120.0f / HOLE_VERTICAL;
+
 	int DebugLastIndex = 0;
-	for (int i = 0; i < Horizontal; i++)
+	for (int i = 0; i < HOLE_HORIZON; i++)
 	{
-		for (int j = 0; j < Vertical; j++)
+		for (int j = 0; j < HOLE_VERTICAL; j++)
 		{
 			CObj* TempPtr = new CCaseHoles();
+
 			if (m_bIsServerMode == true)
-			{
 				TempPtr->SetServerMode(m_bIsServerMode);
-			}
+
 			CCaseHoles* TempCastPtr = static_cast<CCaseHoles*>(TempPtr);
 			TempCastPtr->Initialize();
-			TempCastPtr->AftInit(this, 0.0f + static_cast<float>(i) * 24.0f, 40.0f + j * 200);
+			TempCastPtr->AftInit(this, 0.0f + static_cast<float>(i) * fRotateEach, fEachVerticalOffset + j * 200);
 			CObjMgr::Get_Instance()->Add_Object(OBJ_CASEHOLES, TempPtr);
 
 			this->m_HolesPtrVector.push_back(TempCastPtr);
-			TempCastPtr->SetHoleIndex((i * Vertical) + j);
-			DebugLastIndex = (i * Vertical) + j;
+			TempCastPtr->SetHoleIndex((i * HOLE_VERTICAL) + j);
+
+			DebugLastIndex = (i * HOLE_VERTICAL) + j;
 		}
 	}
 
@@ -79,6 +81,7 @@ void CUpCase::Initialize()
 
 	CObj* TempHeadPtr = new CPirateHead();
 	CPirateHead* TempHeadCastPtr = static_cast<CPirateHead*>(TempHeadPtr);
+	m_pPirateHeadPtr = TempHeadCastPtr;
 	TempHeadCastPtr->Initialize();
 	TempHeadCastPtr->AftInit(this);
 	CObjMgr::Get_Instance()->Add_Object(OBJ_CASEHOLES, TempHeadCastPtr);

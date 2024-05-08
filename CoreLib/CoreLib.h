@@ -11,9 +11,10 @@
 
 using namespace std;
 
-#define HOLE_HORIZON 15
+#define HOLE_HORIZON 8
 #define HOLE_VERTICAL 3
 #define SENDHEARTBEATCYCLE 2000
+#define MAXCONNETTIME 10000
 
 #define CLIENT3 3
 //#define CLIENT3 1
@@ -93,6 +94,7 @@ struct PREDATA
         SERVERCHATSHOOT,
         CLIENTCHATSHOOT,
         SOMECLIENTDEAD,
+        GAMEEND,
         END, //ERROR
     };
 
@@ -349,8 +351,6 @@ struct ClientSession
 
 
 
-
-
 template<typename T>
 bool MySend(ClientSession* pSession, T& Instance, PREDATA::OrderType Type)
 {
@@ -385,7 +385,7 @@ bool MySend(ClientSession* pSession, T& Instance, PREDATA::OrderType Type)
             if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
             {
                 Return = false;
-                //MSGBOX("Error_MySend. Not EWB, PENDING");
+                closesocket(pSession->soc);
             }
         }
     }

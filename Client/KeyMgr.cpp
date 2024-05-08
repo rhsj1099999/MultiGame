@@ -14,6 +14,11 @@ CKeyMgr::~CKeyMgr()
 
 bool CKeyMgr::Key_Pressing(int _iKey)
 {
+	if (GetForegroundWindow() != g_hWnd)
+	{
+		return false;
+	}
+
 	if (GetAsyncKeyState(_iKey) & 0x8000)
 	{
 		return true;
@@ -26,6 +31,11 @@ bool CKeyMgr::Key_Pressing(int _iKey)
 
 bool CKeyMgr::Key_Down(int _iKey)
 {
+	if (GetForegroundWindow() != g_hWnd)
+	{
+		return false;
+	}
+
 	if (!m_bKeyState[_iKey] && (GetAsyncKeyState(_iKey) & 0x8000))
 	{
 		m_bKeyState[_iKey] = !m_bKeyState[_iKey];
@@ -44,6 +54,11 @@ bool CKeyMgr::Key_Down(int _iKey)
 
 bool CKeyMgr::Key_Up(int _iKey)
 {
+	if (GetForegroundWindow() != g_hWnd)
+	{
+		return false;
+	}
+
 	if (m_bKeyState[_iKey] && !(GetAsyncKeyState(_iKey) & 0x8000))
 	{
 		m_bKeyState[_iKey] = !m_bKeyState[_iKey];

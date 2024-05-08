@@ -11,7 +11,10 @@ CPlayingRoom::~CPlayingRoom()
 
 void CPlayingRoom::Init(ClientSession* pThreeSession[], list<ClientSession*>& pReturnList)
 {
+	m_iAnswerHole = rand() % (HOLE_HORIZON * HOLE_VERTICAL);
+
 	m_iPlayingOrder = rand() % CLIENT3;
+
 	for (int i = 0; i < CLIENT3; ++i)
 	{
 		m_arrClients[i] = pThreeSession[i];
@@ -42,6 +45,7 @@ void CPlayingRoom::ClientDead(ClientSession* pSession)
 			if (m_iCurrPlayer <= 0)
 			{
 				delete this;
+				cout << "Room Destroy" << endl;
 				return;
 			}
 
@@ -64,11 +68,8 @@ void CPlayingRoom::ClientDead(ClientSession* pSession)
 
 	wchar_t Buffer[MAX_PATH] = {};
 	wsprintf(Buffer, L"Player [ %d ] Disconnected.", DisconnectedPlayer);
-
-
 	
 	WideCharToMultiByte(CP_UTF8, 0, Buffer, -1, &Buffer_Char[sizeof(TempType) + sizeof(DisconnectedPlayer)], sizeof(Buffer), NULL, NULL);
-
 
 	int Byte = lstrlenW(Buffer) * 2;
 	Byte += NULLSIZE + sizeof(TempType) + sizeof(DisconnectedPlayer);
@@ -78,14 +79,8 @@ void CPlayingRoom::ClientDead(ClientSession* pSession)
 		if (m_arrClients[i] == nullptr)
 			continue;
 
-		if (MySend_Ptr(m_arrClients[i], Buffer_Char, Byte, PREDATA::OrderType::SERVERCHATSHOOT) == false)
-		{
-			SR1_MSGBOX("Fail In : ClientDead / MySendPtr");
-		}
-		if (MySend<int>(m_arrClients[i], m_iPlayingOrder, PREDATA::OrderType::TURNCHANGED) == false)
-		{
-			SR1_MSGBOX("Fail In : ClientDead / MySend");
-		}
+		MySend_Ptr(m_arrClients[i], Buffer_Char, Byte, PREDATA::OrderType::SERVERCHATSHOOT);
+		MySend<int>(m_arrClients[i], m_iPlayingOrder, PREDATA::OrderType::TURNCHANGED);
 	}
 
 
@@ -137,31 +132,48 @@ void CPlayingRoom::ExecutionMessage_InRoom(PREDATA::OrderType eType, void* pData
 
 		int InsertedIndex = pCasted->Index;
 
-		int NextTurn = pCasted->RoomSessionDesc.MyNumber;
-
-		while (true)
+		if (InsertedIndex == m_iAnswerHole)
 		{
-			NextTurn = (NextTurn + 1) % CLIENT3;
+			char Temp[8] = {};
+			memcpy(Temp, &InsertedIndex, sizeof(int));
+			memcpy(&Temp[sizeof(int)], &pCasted->RoomSessionDesc.MyNumber, sizeof(int));
 
-			if (m_arrClients[NextTurn] != nullptr)
-				break;
+			for (int i = 0; i < CLIENT3; ++i)
+			{
+				if (m_arrClients[i] == nullptr)
+					continue;
+
+				MySend_Ptr(m_arrClients[i], Temp, sizeof(int) * 2, PREDATA::OrderType::GAMEEND);
+			}
 		}
-
-		m_iPlayingOrder = NextTurn;
-
-		PAK_INSERTFOLLOW TempFollowData = {};
-		TempFollowData.HoldIndex = InsertedIndex;
-		TempFollowData.PlayerIndex = pCasted->RoomSessionDesc.MyNumber;
-
-		for (int i = 0; i < CLIENT3; ++i)
+		else
 		{
-			if (m_arrClients[i] == nullptr)
-				continue;
+			int NextTurn = pCasted->RoomSessionDesc.MyNumber;
 
-			if (i != pCasted->RoomSessionDesc.MyNumber)
-				MySend<PAK_INSERTFOLLOW>(m_arrClients[i], TempFollowData, PREDATA::OrderType::FOLLOWINDEX);
+			while (true)
+			{
+				NextTurn = (NextTurn + 1) % CLIENT3;
 
-			MySend<int>(m_arrClients[i], NextTurn, PREDATA::OrderType::TURNCHANGED);
+				if (m_arrClients[NextTurn] != nullptr)
+					break;
+			}
+
+			m_iPlayingOrder = NextTurn;
+
+			PAK_INSERTFOLLOW TempFollowData = {};
+			TempFollowData.HoldIndex = InsertedIndex;
+			TempFollowData.PlayerIndex = pCasted->RoomSessionDesc.MyNumber;
+
+			for (int i = 0; i < CLIENT3; ++i)
+			{
+				if (m_arrClients[i] == nullptr)
+					continue;
+
+				if (i != pCasted->RoomSessionDesc.MyNumber)
+					MySend<PAK_INSERTFOLLOW>(m_arrClients[i], TempFollowData, PREDATA::OrderType::FOLLOWINDEX);
+
+				MySend<int>(m_arrClients[i], NextTurn, PREDATA::OrderType::TURNCHANGED);
+			}
 		}
 	}
 		break;
@@ -178,12 +190,7 @@ void CPlayingRoom::ExecutionMessage_InRoom(PREDATA::OrderType eType, void* pData
 			if (m_arrClients[i] == nullptr)
 				continue;
 
-			if (MySend_Ptr(m_arrClients[i], pData, DataSize, PREDATA::OrderType::SERVERCHATSHOOT))
-			{
-				wchar_t TempMessage[MAX_PATH] = {};
-				wsprintf(TempMessage, L"Fail In MySendPtr / PlayingRoom CLIENTCHATSHOOT. My Num : %d", i);
-				MessageBox(0, TempMessage, TEXT("Fail_"), MB_OK);
-			}
+			MySend_Ptr(m_arrClients[i], pData, DataSize, PREDATA::OrderType::SERVERCHATSHOOT);
 		}
 
 		break;
