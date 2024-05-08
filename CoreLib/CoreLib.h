@@ -78,7 +78,6 @@ struct PREDATA
     enum class OrderType
     {
         USERCOUNT,
-        TEST2,
         MESSAGECHANGE,
         SCENECHANGE_TOPLAY,
         SCENECHANGE_TOWORLD,
@@ -353,8 +352,13 @@ struct ClientSession
 
 
 template<typename T>
-void MySend(ClientSession* pSession, T& Instance, PREDATA::OrderType Type)
+bool MySend(ClientSession* pSession, T& Instance, PREDATA::OrderType Type)
 {
+    bool Return = true;
+
+    if (pSession->soc == INVALID_SOCKET)
+        return false;
+
     CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
 
     bool bTempMessageSend = false;
@@ -374,18 +378,22 @@ void MySend(ClientSession* pSession, T& Instance, PREDATA::OrderType Type)
         DWORD flag = 0;
         pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
         pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
+
         if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
         {
             int ERR = WSAGetLastError();
             if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
             {
-                MSGBOX("Error_MySend. Not EWB, PENDING");
+                Return = false;
+                //MSGBOX("Error_MySend. Not EWB, PENDING");
             }
         }
     }
+
+    return Return;
 }
 
-void MySend_Ptr(ClientSession* pSession, void* Ptr, int Size, PREDATA::OrderType Type);
+bool MySend_Ptr(ClientSession* pSession, void* Ptr, int Size, PREDATA::OrderType Type);
 
 
 

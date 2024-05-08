@@ -230,7 +230,9 @@ void CMainServer::LiveCheck()
 
                 ZombieProcess
                 ----------------*/
-
+                if ((*Itr)->PlayingRoomPtr != nullptr)
+                    static_cast<CPlayingRoom*>((*Itr)->PlayingRoomPtr)->ClientDead((*Itr));
+                
 
 
 
@@ -272,7 +274,7 @@ void CMainServer::MatchingRoom()
         {
             ClientSession* pSession = m_queWaitingQueue.front();
 
-            pArr[i] = m_queWaitingQueue.front();
+            pArr[i] = pSession;
 
             pSession->PlayingRoomPtr = pNewRoom;
 
@@ -280,7 +282,6 @@ void CMainServer::MatchingRoom()
 
             MySend<PlayingRoomSessionDesc>(pSession, Desc, PREDATA::OrderType::SCENECHANGE_TOPLAY);
 
-            m_queWaitingQueue.front()->eClientState = ClientSession::ClientState::SCENECHANGE_PLAY;
             m_queWaitingQueue.pop();
         }
 
@@ -295,8 +296,6 @@ bool CMainServer::ExecuetionMessage(PREDATA::OrderType eType, void* pData, int D
     switch (eType)
     {
     case PREDATA::OrderType::USERCOUNT:
-        break;
-    case PREDATA::OrderType::TEST2:
         break;
     case PREDATA::OrderType::MESSAGECHANGE:
         break;
@@ -318,19 +317,8 @@ bool CMainServer::ExecuetionMessage(PREDATA::OrderType eType, void* pData, int D
 
         CPlayingRoom* pRoom = static_cast<CPlayingRoom*>(Data.RoomSessionDesc.MyRoomPtr);
 
-        ClientSession** pClients = pRoom->GetClients();
+        pRoom->ExecutionMessage_InRoom(eType, &Data, sizeof(PAK_ROTATEANGLE));
 
-        float fAngle = Data.Angle;
-
-        for (int i = 0; i < CLIENT3; ++i)
-        {
-            if (i == Data.RoomSessionDesc.MyNumber)
-                continue;
-
-            ClientSession* pSession = pClients[i];
-
-            MySend<float>(pSession, fAngle, PREDATA::OrderType::FOLLOWANGLE);
-        }
     }
         break;
     case PREDATA::OrderType::PLAYERBLADEINSERTED:
@@ -343,58 +331,28 @@ bool CMainServer::ExecuetionMessage(PREDATA::OrderType eType, void* pData, int D
 
         CPlayingRoom* pRoom = static_cast<CPlayingRoom*>(Data.RoomSessionDesc.MyRoomPtr);
 
-        ClientSession** pClients = pRoom->GetClients();
-
-        int InsertedIndex = Data.Index;
-
-        int NextTurn = (Data.RoomSessionDesc.MyNumber + 1)  % CLIENT3;
-
-        PAK_INSERTFOLLOW TempFollowData = {};
-        TempFollowData.HoldIndex = InsertedIndex;
-        TempFollowData.PlayerIndex = Data.RoomSessionDesc.MyNumber;
-
-        for (int i = 0; i < CLIENT3; ++i)
-        {
-            ClientSession* pSession = pClients[i];
-
-            if (i != Data.RoomSessionDesc.MyNumber)
-                MySend<PAK_INSERTFOLLOW>(pSession, TempFollowData, PREDATA::OrderType::FOLLOWINDEX);
-
-            MySend<int>(pSession, NextTurn, PREDATA::OrderType::TURNCHANGED);
-        }
+        pRoom->ExecutionMessage_InRoom(eType, &Data, sizeof(PAK_BLADEINSERT));
     }
         break;
     case PREDATA::OrderType::HEARTBEAT:
         break;
     case PREDATA::OrderType::CLIENTCHATSHOOT:
     {
-        //클라이언트가 서버에게 채팅을 쐈다
-
-        // 그 방에 있는 모두에게 채팅을 보내야 한다. 본인 포함 = 방번호도 알아야함(방 포인터).
-
         char* pCharCasted = static_cast<char*>(pData);
 
         MSGType TempType = {};
         PlayingRoomSessionDesc TempRoomDesc = {};
         char PacData[MAX_PATH] = {};
         int CharSize = DataSize - (sizeof(TempType) + sizeof(TempRoomDesc));
-
-        memcpy(&TempType, pCharCasted, sizeof(TempType));
-
+        
         memcpy(&TempRoomDesc, &pCharCasted[sizeof(TempType)], sizeof(TempRoomDesc));
-        CPlayingRoom* pRoom = static_cast<CPlayingRoom*>(TempRoomDesc.MyRoomPtr);
-
-        memcpy(PacData, pCharCasted, sizeof(TempType));
-        memcpy(&PacData[sizeof(TempType)], &TempRoomDesc.MyNumber, sizeof(int));
+        memcpy(PacData, pCharCasted, sizeof(MSGType));
+        memcpy(&PacData[sizeof(MSGType)], &TempRoomDesc.MyNumber, sizeof(int));
         memcpy(&PacData[sizeof(TempType) + sizeof(int)], &pCharCasted[(sizeof(TempType) + sizeof(TempRoomDesc))], CharSize);
 
+        CPlayingRoom* pRoom = static_cast<CPlayingRoom*>(TempRoomDesc.MyRoomPtr);
 
-        ClientSession** Clients = pRoom->GetClients();
-        
-        for (int i = 0; i < CLIENT3; i++)
-        {
-            MySend_Ptr(Clients[i], PacData, CharSize + sizeof(int) + sizeof(TempType), PREDATA::OrderType::SERVERCHATSHOOT);
-        }
+        pRoom->ExecutionMessage_InRoom(eType, PacData, CharSize + sizeof(int) + sizeof(TempType));
     }
 
 
@@ -495,7 +453,7 @@ void CMainServer::WorkerEntry_D(HANDLE hHandle)
                 int ERR = WSAGetLastError();
                 if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
                 {
-                    MSGBOX("Error_MySend. Not EWB, PENDING");
+                    MSGBOX("WOD Server Send / Error_MySend. Not EWB, PENDING");
                 }
             }
 #pragma endregion Send
@@ -586,7 +544,7 @@ void CMainServer::WorkerEntry_D(HANDLE hHandle)
                 int ERR = WSAGetLastError();
                 if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
                 {
-                    MSGBOX("Error_MySend. Not EWB, PENDING");
+                    MSGBOX("WOD Server RECV / Error_MySend. Not EWB, PENDING");
                 }
             }
 #pragma endregion Recv

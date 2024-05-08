@@ -5,7 +5,7 @@
 struct ChattingMessageDesc
 {
 	ChattingMessageDesc(MSGType Type, wchar_t* Buffer, DWORD SendTime)
-		: eType()
+		: eType(Type)
 		, Message(Buffer)
 		, SendedTime(SendTime) {}
 
@@ -117,7 +117,15 @@ private:
 	bool m_bIsChatReady = false;
 
 	deque<ChattingMessageDesc> m_Chattings;
+	CRITICAL_SECTION m_ChatQueueCS = {};
+public:
+	void EnterCriticalSection_Chat() { EnterCriticalSection(&m_ChatQueueCS); }
+	void LeaveCriticalSection_Chat() { LeaveCriticalSection(&m_ChatQueueCS); }
+
+
 	vector<CCaseHoles*>* m_vecCaseHoles = nullptr;
 	DWORD m_dwHeartBitCounter = {};
+
+	
 };
 

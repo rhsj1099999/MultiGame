@@ -229,17 +229,6 @@ void CCaseHoles::Render(HDC hDC)
 			);
 			DeleteObject(SelectObject(hDC, TempHoldPen));
 		}
-		//HBRUSH TempRedBrush = CreateSolidBrush(RGB(255, 0, 0));
-		//HBRUSH TempHoldBRush = (HBRUSH)SelectObject(hDC, TempRedBrush);
-		//Rectangle
-		//(
-		//	hDC,
-		//	m_InsertArea.left,
-		//	m_InsertArea.top,
-		//	m_InsertArea.right,
-		//	m_InsertArea.bottom
-		//);
-		//DeleteObject(SelectObject(hDC, TempHoldBRush));
 	}
 }
 

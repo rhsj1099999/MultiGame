@@ -203,6 +203,8 @@ void CServerManager::InitServer()
 	if (m_bClientConnected == true)
 		return;
 
+    InitializeCriticalSection(&m_ChatQueueCS);
+
 	if (WSAStartup(MAKEWORD(2, 2), &m_wsa))
 	{
 		//Break;
@@ -276,7 +278,7 @@ void CServerManager::InitServer()
                     int ERR = WSAGetLastError();
                     if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
                     {
-                        MSGBOX("Error_MySend. Not EWB, PENDING");
+                        MSGBOX("WOD Client RECV / Error_MySend. Not EWB, PENDING");
                     }
                 }
                 break;
@@ -371,13 +373,14 @@ void CServerManager::ChattingUpdate()
 
 void CServerManager::ShowChattings(HDC hDC)
 {
+    if (m_Chattings.size() == 0)
+        return;
+
     DWORD CurrTime = CMainGame::Get_Instance()->GetCurrTime();
 
-    HPEN TempRedPen = CreatePen(1, 1, RGB(255, 0, 0));
-    HPEN TempHoldPen = {};
-    bool bPenChanged = false;
-
     int Index = 0;
+
+    EnterCriticalSection_Chat();
     for (deque<ChattingMessageDesc>::iterator Itr = m_Chattings.begin(); Itr != m_Chattings.end(); ++Itr)
     {
         if ((CurrTime - (*Itr).SendedTime) > MAXCHATTINGSHOW)
@@ -388,28 +391,24 @@ void CServerManager::ShowChattings(HDC hDC)
                 break;
         }
         ++Index;
-        //Sys Msg = Rend Pen
-        //User Msg = Black Pen
+
         switch ((*Itr).eType)
         {
         case MSGType::Sys:
-            bPenChanged = true;
-            TempHoldPen = (HPEN)SelectObject(hDC, TempRedPen);
+            SetTextColor(hDC, RGB(255, 0, 0));
             break;
         case MSGType::User:
+            SetTextColor(hDC, RGB(0, 0, 0));
             break;
         default:
             break;
         }
 
-        TextOut(hDC, 10, WINCY / 2 - (MESSAGEYDIFF * Index), (*Itr).Message.c_str(), (*Itr).Message.size());
-
-        if (bPenChanged)
-            TempHoldPen = (HPEN)SelectObject(hDC, TempHoldPen);
+        TextOut(hDC, 15, (WINCY - 15) - (MESSAGEYDIFF * Index), (*Itr).Message.c_str(), (*Itr).Message.size());
     }
+    LeaveCriticalSection_Chat();
 
-    DeleteObject(TempRedPen);
-
+    SetTextColor(hDC, RGB(0, 0, 0));
 }
 
 void CServerManager::Render(HDC hDC)
@@ -452,10 +451,6 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
 	case PREDATA::OrderType::USERCOUNT:
 		memcpy(&m_iCurrUser, (int*)Data, sizeof(int));
 		break;
-	case PREDATA::OrderType::TEST2:
-		memcpy(&m_iCurrUser, (int*)Data, DataSize);
-		break;
-
     case PREDATA::OrderType::MESSAGECHANGE:
         memcpy(&m_pSession->wsaBuf_Recv.len, (int*)Data, DataSize);
         break;
@@ -545,13 +540,14 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
         default:
             break;
         }
-
+        EnterCriticalSection_Chat();
         m_Chattings.push_front(ChattingMessageDesc
         (
             TempType,
             CompleteString,
             CMainGame::Get_Instance()->GetCurrTime()
         ));
+        LeaveCriticalSection_Chat();
     }
         break;
 
