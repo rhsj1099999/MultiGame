@@ -7,6 +7,7 @@
 #include "Stage4.h"
 #include "Stage_Matching.h"
 #include "Stage_Exit.h"
+#include "CServerManager.h"
 
 CSceneMgr* CSceneMgr::m_pInstance = nullptr;
 bool		CSceneMgr::m_IsChange = false;

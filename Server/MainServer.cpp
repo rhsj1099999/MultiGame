@@ -49,7 +49,6 @@ void CMainServer::Release()
 
 void CMainServer::Init()
 {
-
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa))
     {
@@ -154,14 +153,17 @@ void CMainServer::ConnectTry()
     pSession->Respones = CTimer::GetInstance()->GetCurrTime();
     pSession->LateCount = 0;
     pSession->eClientState = ClientSession::ClientState::WAITING;
-    m_liClientSockets.push_back(pSession);
     pSession->CQPtr = new CMyCQ(BUF384);
-    m_queWaitingQueue.push(pSession);
+
     CreateIoCompletionPort((HANDLE)ClientSocket, m_IOCPHandle, /*Key*/(ULONG_PTR)pSession, 0);
 
     {
-        CMyCQ::LockGuard Temp(m_ClassDataLock);
+        CMyCQ::LockGuard TempListLock(m_ListLock);
+        m_liClientSockets.push_back(pSession);
         m_iCurrUser = static_cast<__int32>(m_liClientSockets.size());
+
+        CMyCQ::LockGuard TempQueueLock(m_WatiingLock);
+        m_liWatingClients.push_back(pSession);
     }
 
     cout << "Client Connected Users : " << m_iCurrUser << endl;
@@ -206,6 +208,8 @@ void CMainServer::LiveCheck()
 
     for (list<ClientSession*>::iterator Itr = m_liClientSockets.begin(); Itr != m_liClientSockets.end(); ++Itr)
     {
+        bTempDead = false;
+
         if ((*Itr)->soc == INVALID_SOCKET)
         {
             bTempDead = true;
@@ -223,7 +227,7 @@ void CMainServer::LiveCheck()
 
         if (bTempDead)
         {
-            CMyCQ::LockGuard Temp(m_ClassDataLock);
+            CMyCQ::LockGuard Temp(m_ListLock);
 
             if ((*Itr)->PlayingRoomPtr != nullptr)
                 static_cast<CPlayingRoom*>((*Itr)->PlayingRoomPtr)->ClientDead((*Itr));
@@ -246,8 +250,10 @@ void CMainServer::LiveCheck()
 
 void CMainServer::MatchingRoom()
 {
-    if (m_queWaitingQueue.size() >= CLIENT3)
+    if (m_liWatingClients.size() >= CLIENT3)
     {
+        CMyCQ::LockGuard Temp(m_WatiingLock);
+
         CPlayingRoom* pNewRoom = new CPlayingRoom();
 
         ClientSession* pArr[CLIENT3] = { nullptr, };
@@ -260,7 +266,7 @@ void CMainServer::MatchingRoom()
 
         for (int i = 0; i < CLIENT3; i++)
         {
-            ClientSession* pSession = m_queWaitingQueue.front();
+            ClientSession* pSession = m_liWatingClients.front();
 
             pArr[i] = pSession;
 
@@ -270,7 +276,8 @@ void CMainServer::MatchingRoom()
 
             MySend<PlayingRoomSessionDesc>(pSession, Desc, PREDATA::OrderType::SCENECHANGE_TOPLAY);
 
-            m_queWaitingQueue.pop();
+
+            m_liWatingClients.erase(m_liWatingClients.begin());
         }
 
         pNewRoom->Init(pArr, m_liClientSockets);
@@ -373,17 +380,17 @@ void CMainServer::Lock_Queue(VFPtr pFArr[], int ArrSize, void* Args[])
 void CMainServer::Lock_Queue_Push(void* Ptr)
 {
     ClientSession** Casted = static_cast<ClientSession**>(Ptr);
-    m_queWaitingQueue.push((*Casted));
+    m_liWatingClients.push_back((*Casted));
 }
 
 void CMainServer::Lock_Queue_ChangingRoom(void* Ptr)
 {
-    if (m_queWaitingQueue.size() >= 3)
+    if (m_liWatingClients.size() >= 3)
     {
         for (int i = 0; i < 3; i++)
         {
-            m_queWaitingQueue.front()->eClientState = ClientSession::ClientState::PLAYING;
-            m_queWaitingQueue.pop();
+            m_liWatingClients.front()->eClientState = ClientSession::ClientState::PLAYING;
+            m_liWatingClients.erase(m_liWatingClients.begin());
         }
     }
 }
@@ -440,7 +447,8 @@ void CMainServer::WorkerEntry_D(HANDLE hHandle)
                 int ERR = WSAGetLastError();
                 if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
                 {
-                    MSGBOX("WOD Server Send / Error_MySend. Not EWB, PENDING");
+                    //MSGBOX("WOD Server Send / Error_MySend. Not EWB, PENDING");
+                    closesocket(pSession->soc);
                 }
             }
 #pragma endregion Send
@@ -452,7 +460,10 @@ void CMainServer::WorkerEntry_D(HANDLE hHandle)
             pSession->ByteToRead -= Bytes;
 
             if (pSession->ByteToRead < 0)
-                SR1_MSGBOX("ERROR : ByteToRead Under 0 / Server");
+            {
+                closesocket(pSession->soc);
+                continue;
+            }
 
             pSession->Respones = CTimer::GetInstance()->GetCurrTime();
 
@@ -521,9 +532,8 @@ void CMainServer::WorkerEntry_D(HANDLE hHandle)
 
             if (pSession->ByteToRead <= 0)
             {
-                wchar_t Log[32] = {};
-                wsprintf(Log, L"ByteToRead Error Server, %d", pSession->ByteToRead);
-                MessageBox(0, Log, TEXT("Fail_"), MB_OK);
+                closesocket(pSession->soc);
+                continue;
             }
 
             if (WSARecv(pSession->soc, &pSession->wsaBuf_Recv, 1, &recvLen, &flag, &pSession->Overlapped_Recv, NULL) == SOCKET_ERROR)
@@ -531,7 +541,7 @@ void CMainServer::WorkerEntry_D(HANDLE hHandle)
                 int ERR = WSAGetLastError();
                 if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
                 {
-                    MSGBOX("WOD Server RECV / Error_MySend. Not EWB, PENDING");
+                    closesocket(pSession->soc);
                 }
             }
 #pragma endregion Recv

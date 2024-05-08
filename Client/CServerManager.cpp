@@ -10,6 +10,35 @@ CServerManager* CServerManager::m_pInstance = nullptr;
 
 static bool SceneChanged = false;
 
+void CServerManager::ClearDatas()
+{
+    m_bClientConnected = false;
+    m_iCurrUser = 1; //At Least Me
+    m_bCanMove = false;
+    m_fCurrAngle = 0.0;
+    m_fPrevAngle = 0.0;
+    m_iCurrentPlayer = -1;
+    m_bIsChatReady = false;
+
+    m_Chattings.clear();
+    DeleteCriticalSection(&m_ChatQueueCS);
+
+    m_bGameIsEnd = false;
+    m_bIMWIN = false;
+    m_iWhoWins = -1;
+    m_dwConnectTrying = {};
+
+    if (m_pSession != nullptr)
+    {
+        delete m_pSession;
+        m_pSession = nullptr;
+    }
+
+    m_pPirateHeadPtr = nullptr;
+    m_vecCaseHoles = nullptr;
+    m_dwHeartBitCounter = {};
+}
+
 void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
 {
     while (true)
@@ -22,17 +51,8 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
 
         if (bRet == FALSE || Bytes == 0)
         {
+            ServerDamaged();
             return;
-
-            if (m_IOCPHandle == INVALID_HANDLE_VALUE)
-                return;
-
-            if (Bytes == 0)
-                SR1_MSGBOX("ERROR : GQCS Read 0 Bytes");
-
-            SR1_MSGBOX("GQCS Fail : Recieve At Client");
-
-            continue;
         }
 
         if (pOverlap == &pSession->Overlapped_Recv)
@@ -43,7 +63,11 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
 
 
             if (pSession->ByteToRead < 0)
-                SR1_MSGBOX("ERROR : ByteToRead Under 0 / Client");
+            {
+                ServerDamaged();
+                return;
+            }
+                
 
             while (true)
             {
@@ -102,9 +126,8 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
 
             if (pSession->ByteToRead <= 0)
             {
-                wchar_t Log[32] = {};
-                wsprintf(Log, L"ByteToRead Error Client, %d", pSession->ByteToRead);
-                MessageBox(0, Log, TEXT("Fail_"), MB_OK);
+                ServerDamaged();
+                return;
             }
 
             if (WSARecv(pSession->soc, &pSession->wsaBuf_Recv, 1, &recvLen, &flag, &pSession->Overlapped_Recv, NULL) == SOCKET_ERROR)
@@ -112,7 +135,8 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
                 int ERR = WSAGetLastError();
                 if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
                 {
-                    MSGBOX("Error_MySend. Not EWB, PENDING");
+                    ServerDamaged();
+                    return;
                 }
             }
 #pragma endregion Recv
@@ -138,7 +162,8 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
                 int ERR = WSAGetLastError();
                 if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
                 {
-                    MSGBOX("Error_MySend. Not EWB, PENDING");
+                    ServerDamaged();
+                    return;
                 }
             }
 #pragma endregion Send
@@ -158,6 +183,11 @@ CServerManager::~CServerManager()
 
 int CServerManager::Update()
 {
+    if (m_bClientConnected == true && m_Socket == INVALID_SOCKET)
+    {
+        CSceneMgr::Get_Instance()->Scene_Change(SC_WORLDMAP, false);
+    }
+
     ConnectTry();
 
     SendHeartBeat();
@@ -173,8 +203,7 @@ void CServerManager::Late_Update()
 
 void CServerManager::Release()
 {
-    if (m_bClientConnected == false)
-        return;
+    ClearDatas();
 
     shutdown(m_Socket, SD_BOTH);
 
@@ -399,6 +428,7 @@ void CServerManager::ConnectTry()
                 m_IOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
             }
             m_bClientConnected = true;
+
             for (int i = 0; i < 10; i++)
             {
                 m_vecWorkerThreads.push_back(thread([=]()
@@ -406,6 +436,7 @@ void CServerManager::ConnectTry()
                         WorkerEntry_D(m_IOCPHandle, nullptr);
                     }));
             }
+
 
             ClientSession* pSession = new ClientSession;
             m_pSession = pSession;
@@ -440,6 +471,18 @@ void CServerManager::ConnectTry()
     }
 }
 
+void CServerManager::ServerDamaged()
+{
+    ClearDatas();
+
+    m_bClientConnected = false;
+
+    closesocket(m_Socket);
+    m_Socket = INVALID_SOCKET;
+
+    CloseHandle(m_IOCPHandle);
+}
+
 PlayingRoomSessionDesc* CServerManager::GetRoomDescPtr()
 {
     if (m_tRoomDesc.MyNumber == -1)
@@ -464,11 +507,14 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
 
     case PREDATA::OrderType::SCENECHANGE_TOPLAY:
     {
-        m_iCurrUser = 1;
-        CSceneMgr::Get_Instance()->Scene_Change(SC_STAGE4, true);
+        ClearDatas();
 
+        CSceneMgr::Get_Instance()->Scene_Change(SC_STAGE4, true);
         PlayingRoomSessionDesc* pCast = static_cast<PlayingRoomSessionDesc*>(Data);
         CServerManager::Get_Instance()->SetRoomDesc(pCast);
+
+
+
         m_HoleVector.clear();
         m_HoleVector.resize(HOLE_HORIZON * HOLE_VERTICAL, true);
     }

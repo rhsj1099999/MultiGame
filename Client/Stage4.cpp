@@ -42,6 +42,7 @@ void CStage4::Update()
 	{
 		if (m_bIsServerMode)
 		{
+			CServerManager::Get_Instance()->ClearDatas();
 			CServerManager::Get_Instance()->Release();
 			CServerManager::Get_Instance()->Destroy_Instance();
 		}

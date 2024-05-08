@@ -36,7 +36,7 @@ public:
 	void SendHeartBeat();
 	void ConnectTry();
 
-
+	void ServerDamaged();
 	bool GetClientConnected() { return m_bClientConnected; }
 	int GetServerUser() { return m_iCurrUser; }
 	float GetCurrentAngle() {return m_fCurrAngle;}
@@ -89,6 +89,7 @@ public:
 	bool GetIsCanInsert(int Index) { return m_HoleVector[Index]; }
 	void SetInsert(int Index) { m_HoleVector[Index] = false; }
 	int GetCurrentPlayer() { return m_iCurrentPlayer; }
+	void ClearDatas();
 private:
 	void WorkerEntry_D(HANDLE hHandle, char* pOut, int size = 100);
 	bool ExecuetionMessage(PREDATA::OrderType eType, void* Data, int DataSize);
@@ -105,6 +106,7 @@ private:
 	vector<thread> m_vecWorkerThreads;
 	ClientSession* m_pSession = nullptr;
 	HANDLE m_IOCPHandle = INVALID_HANDLE_VALUE;
+	vector<bool> m_HoleVector;
 
 	/*---------------
 		Data
@@ -115,7 +117,6 @@ private:
 	float m_fCurrAngle = 0.0;
 	float m_fPrevAngle = 0.0;
 	int m_iCurrentPlayer = -1;
-	vector<bool> m_HoleVector;
 	bool m_bIsChatReady = false;
 
 	deque<ChattingMessageDesc> m_Chattings;

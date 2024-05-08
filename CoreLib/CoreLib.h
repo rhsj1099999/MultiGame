@@ -38,7 +38,7 @@ using namespace std;
 
 #define MESSAGEYDIFF 30
 
-#define MAXTIMEOUT 4000
+#define MAXTIMEOUT 3000
 #define MAXLATECOUNT 2
 
 enum class MSGType
@@ -338,6 +338,7 @@ struct ClientSession
         if (CQPtr != nullptr)
         {
             delete CQPtr;
+            CQPtr = nullptr;
         }
     }
 

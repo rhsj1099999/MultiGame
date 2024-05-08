@@ -57,9 +57,12 @@ private:
 	bool m_bClientConnected = false;
 	int m_iCurrUser = 0;
 
-	mutex m_ClassDataLock = {};
 	list<ClientSession*> m_liClientSockets;
-	queue<ClientSession*> m_queWaitingQueue;
+	mutex m_ListLock = {};
+
+	list<ClientSession*> m_liWatingClients;
+	mutex m_WatiingLock = {};
+
 	list<CPlayingRoom*> m_liPlayingRooms;
 
 };
