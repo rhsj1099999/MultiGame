@@ -1,4 +1,0 @@
-﻿  Server.cpp
-C:\Users\rhsj\Desktop\MultiGame\GPT_Server\Server.cpp(335,66): warning C4267: '=': 'size_t'에서 'ULONG'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\Users\rhsj\Desktop\MultiGame\GPT_Server\Server.cpp(411,56): warning C4267: '=': 'size_t'에서 'ULONG'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-  GPT_Server.vcxproj -> C:\Users\rhsj\Desktop\MultiGame\x64\Debug\GPT_Server.exe

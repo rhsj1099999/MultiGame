@@ -22,6 +22,8 @@ public:
 	void Init();
 	void Tick();
 
+	void DeleteRoom(CPlayingRoom* RoomPtr);
+
 private:
 	void ConnectTry();
 	void TickWatingClients();

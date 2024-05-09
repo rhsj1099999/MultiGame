@@ -9,11 +9,22 @@ CMainInstance* CMainInstance::m_pInstance = nullptr;
 CMainInstance::~CMainInstance()
 {
 	if (m_pTimer != nullptr)
+	{
 		m_pTimer->Destroy_Instance();
+		m_pTimer = nullptr;
+	}
+		
 
-	if (m_pInstance != nullptr)
+	m_pMainServer->Release();
+	
+	if (m_pMainServer != nullptr)
+	{
 		m_pMainServer->Destroy_Instance();
+		m_pMainServer = nullptr;
+	}
+		
 }
+
 
 void CMainInstance::Init()
 {
@@ -28,13 +39,20 @@ void CMainInstance::Init()
 
 void CMainInstance::Tick()
 {
-	if (m_pTimer != nullptr)
+	m_bIsRunning = true;
+
+	if (m_bIsTick == true)
 	{
-		m_pTimer->Tick();
+		if (m_pTimer != nullptr)
+		{
+			m_pTimer->Tick();
+		}
+
+		if (m_pMainServer != nullptr)
+		{
+			m_pMainServer->Tick();
+		}
 	}
 
-	if (m_pMainServer != nullptr)
-	{
-		m_pMainServer->Tick();
-	}
+	m_bIsRunning = false;
 }

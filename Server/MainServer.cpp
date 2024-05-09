@@ -27,23 +27,37 @@ void CMainServer::Release()
         m_IOCPHandle = INVALID_HANDLE_VALUE;
     }
 
-    for (ClientSession* pCS : m_liClientSockets)
-    {
-        closesocket(pCS->soc);
-    }
-
-    closesocket(m_Socket);
-
-    WSACleanup();
-
     for (vector<thread>::iterator Itr = m_vecWorkerThreads.begin(); Itr != m_vecWorkerThreads.end(); ++Itr)
     {
         Itr->join();
     }
 
-    for (ClientSession* pCS : m_liClientSockets)
+
+    closesocket(m_Socket);
+
+    WSACleanup();
+
+    for (list<CPlayingRoom*>::iterator Itr = m_liPlayingRooms.begin(); Itr != m_liPlayingRooms.end(); ++Itr)
     {
-        delete pCS;
+        delete (*Itr);
+    }
+    m_liPlayingRooms.clear();
+
+
+    {
+        CMyCQ::LockGuard Temp(m_ListLock);
+
+        for (ClientSession* pCS : m_liClientSockets)
+        {
+            closesocket(pCS->soc);
+
+            if (pCS != nullptr)
+            {
+                delete pCS;
+                pCS = nullptr;
+            }
+        }
+        m_liClientSockets.clear();
     }
 }
 
@@ -110,6 +124,22 @@ void CMainServer::Tick()
     LiveCheck();
 
     MatchingRoom();
+}
+
+void CMainServer::DeleteRoom(CPlayingRoom* RoomPtr)
+{
+    for (list<CPlayingRoom*>::iterator Itr = m_liPlayingRooms.begin(); Itr != m_liPlayingRooms.end(); ++Itr)
+    {
+        if ((*Itr) == RoomPtr)
+        {
+            delete (*Itr);
+
+            Itr = m_liPlayingRooms.erase(Itr);
+
+            if (Itr == m_liPlayingRooms.end())
+                break;
+        }
+    }
 }
 
 CMainServer* CMainServer::GetInstance()
@@ -250,13 +280,13 @@ void CMainServer::LiveCheck()
 
 void CMainServer::MatchingRoom()
 {
-    if (m_liWatingClients.size() >= CLIENT3)
+    if (m_liWatingClients.size() >= MAXCLIENTS)
     {
         CMyCQ::LockGuard Temp(m_WatiingLock);
 
         CPlayingRoom* pNewRoom = new CPlayingRoom();
 
-        ClientSession* pArr[CLIENT3] = { nullptr, };
+        ClientSession* pArr[MAXCLIENTS] = { nullptr, };
 
         PlayingRoomSessionDesc Desc
         {
@@ -264,7 +294,7 @@ void CMainServer::MatchingRoom()
             pNewRoom
         };
 
-        for (int i = 0; i < CLIENT3; i++)
+        for (int i = 0; i < MAXCLIENTS; i++)
         {
             ClientSession* pSession = m_liWatingClients.front();
 
@@ -281,6 +311,7 @@ void CMainServer::MatchingRoom()
         }
 
         pNewRoom->Init(pArr, m_liClientSockets);
+        m_liPlayingRooms.push_back(pNewRoom);
     }
 }
 

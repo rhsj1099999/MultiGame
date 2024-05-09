@@ -15,7 +15,8 @@ public:
 		return m_pInstance;
 	}
 	~CMainInstance();
-
+	bool GetIsRunning() { return m_bIsRunning; }
+	void SetCanTick(bool Tick) { m_bIsTick = Tick; }
 	void Init();
 	void Tick();
 
@@ -24,5 +25,7 @@ private:
 
 	CTimer* m_pTimer = nullptr;
 	CMainServer* m_pMainServer = nullptr;
+	bool m_bIsTick = true;
+	bool m_bIsRunning = false;
 };
 

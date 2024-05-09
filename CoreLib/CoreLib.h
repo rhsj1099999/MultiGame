@@ -13,16 +13,13 @@ using namespace std;
 
 #define HOLE_HORIZON 8
 #define HOLE_VERTICAL 3
-#define SENDHEARTBEATCYCLE 2000
-#define MAXCONNETTIME 10000
+
+
+#define MAXCLIENTS 1
 
 #define CLIENT3 3
-//#define CLIENT3 1
 #define CLIENT1 1
-#define MAXCHATLEN 50
-#define MAXCHATLEN_TOC 100
-#define CMPCHAT 150
-#define NULLSIZE 1
+
 
 #define BUF64 64
 #define BUF128 128
@@ -34,12 +31,19 @@ using namespace std;
 #define BUFSIZE 100
 #define BUFSIZE_100 100
 #define BUFSIZE_1000 1000
-#define MAXCHATTINGSHOW 4000
 
+
+#define MAXCHATLEN 5
+#define MAXCHATLEN_TOC 10
+#define CMPCHAT 150
+#define NULLSIZE 1
+#define MAXCHATTINGSHOW 4000
 #define MESSAGEYDIFF 30
 
-#define MAXTIMEOUT 3000
-#define MAXLATECOUNT 2
+#define SENDHEARTBEATCYCLE 2000
+#define MAXCONNETTIME 10000
+#define MAXTIMEOUT 450000
+#define MAXLATECOUNT 3
 
 enum class MSGType
 {

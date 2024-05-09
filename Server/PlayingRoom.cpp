@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "PlayingRoom.h"
+#include "MainServer.h"
 
 CPlayingRoom::CPlayingRoom(ClientSession* pThreeSession[], list<ClientSession*>& pReturnList)
 {
@@ -13,9 +14,9 @@ void CPlayingRoom::Init(ClientSession* pThreeSession[], list<ClientSession*>& pR
 {
 	m_iAnswerHole = rand() % (HOLE_HORIZON * HOLE_VERTICAL);
 
-	m_iPlayingOrder = rand() % CLIENT3;
+	m_iPlayingOrder = rand() % MAXCLIENTS;
 
-	for (int i = 0; i < CLIENT3; ++i)
+	for (int i = 0; i < MAXCLIENTS; ++i)
 	{
 		m_arrClients[i] = pThreeSession[i];
 		MySend<int>(m_arrClients[i], m_iPlayingOrder, PREDATA::OrderType::TURNCHANGED);
@@ -32,7 +33,7 @@ void CPlayingRoom::ClientDead(ClientSession* pSession)
 {
 	int DisconnectedPlayer = 0;
 
-	for (int i = 0; i < CLIENT3; i++)
+	for (int i = 0; i < MAXCLIENTS; i++)
 	{
 		if (m_arrClients[i] == pSession)
 		{
@@ -44,7 +45,8 @@ void CPlayingRoom::ClientDead(ClientSession* pSession)
 			
 			if (m_iCurrPlayer <= 0)
 			{
-				delete this;
+				//delete this;
+				CMainServer::GetInstance()->DeleteRoom(this);
 				cout << "Room Destroy" << endl;
 				return;
 			}
@@ -53,7 +55,7 @@ void CPlayingRoom::ClientDead(ClientSession* pSession)
 			{
 				while (true)
 				{
-					m_iPlayingOrder = (m_iPlayingOrder + 1) % CLIENT3;
+					m_iPlayingOrder = (m_iPlayingOrder + 1) % MAXCLIENTS;
 
 					if (m_arrClients[m_iPlayingOrder] != nullptr)
 						break;
@@ -74,7 +76,7 @@ void CPlayingRoom::ClientDead(ClientSession* pSession)
 	int Byte = lstrlenW(Buffer) * 2;
 	Byte += NULLSIZE + sizeof(TempType) + sizeof(DisconnectedPlayer);
 
-	for (int i = 0; i < CLIENT3; i++)
+	for (int i = 0; i < MAXCLIENTS; i++)
 	{
 		if (m_arrClients[i] == nullptr)
 			continue;
@@ -110,7 +112,7 @@ void CPlayingRoom::ExecutionMessage_InRoom(PREDATA::OrderType eType, void* pData
 
 		float fAngle = pCasted->Angle;
 
-		for (int i = 0; i < CLIENT3; ++i)
+		for (int i = 0; i < MAXCLIENTS; ++i)
 		{
 			if (i == pCasted->RoomSessionDesc.MyNumber)
 				continue;
@@ -138,7 +140,7 @@ void CPlayingRoom::ExecutionMessage_InRoom(PREDATA::OrderType eType, void* pData
 			memcpy(Temp, &InsertedIndex, sizeof(int));
 			memcpy(&Temp[sizeof(int)], &pCasted->RoomSessionDesc.MyNumber, sizeof(int));
 
-			for (int i = 0; i < CLIENT3; ++i)
+			for (int i = 0; i < MAXCLIENTS; ++i)
 			{
 				if (m_arrClients[i] == nullptr)
 					continue;
@@ -152,7 +154,7 @@ void CPlayingRoom::ExecutionMessage_InRoom(PREDATA::OrderType eType, void* pData
 
 			while (true)
 			{
-				NextTurn = (NextTurn + 1) % CLIENT3;
+				NextTurn = (NextTurn + 1) % MAXCLIENTS;
 
 				if (m_arrClients[NextTurn] != nullptr)
 					break;
@@ -164,7 +166,7 @@ void CPlayingRoom::ExecutionMessage_InRoom(PREDATA::OrderType eType, void* pData
 			TempFollowData.HoldIndex = InsertedIndex;
 			TempFollowData.PlayerIndex = pCasted->RoomSessionDesc.MyNumber;
 
-			for (int i = 0; i < CLIENT3; ++i)
+			for (int i = 0; i < MAXCLIENTS; ++i)
 			{
 				if (m_arrClients[i] == nullptr)
 					continue;
@@ -185,7 +187,7 @@ void CPlayingRoom::ExecutionMessage_InRoom(PREDATA::OrderType eType, void* pData
 	case PREDATA::OrderType::SERVERCHATSHOOT:
 		break;
 	case PREDATA::OrderType::CLIENTCHATSHOOT:
-		for (int i = 0; i < CLIENT3; i++)
+		for (int i = 0; i < MAXCLIENTS; i++)
 		{
 			if (m_arrClients[i] == nullptr)
 				continue;

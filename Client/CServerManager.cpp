@@ -12,7 +12,6 @@ static bool SceneChanged = false;
 
 void CServerManager::ClearDatas()
 {
-    m_bClientConnected = false;
     m_iCurrUser = 1; //At Least Me
     m_bCanMove = false;
     m_fCurrAngle = 0.0;
@@ -51,6 +50,10 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
 
         if (bRet == FALSE || Bytes == 0)
         {
+            if (Bytes == 0 && m_IOCPHandle != INVALID_HANDLE_VALUE)
+            {
+                continue;
+            }
             ServerDamaged();
             return;
         }
@@ -90,6 +93,10 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
                         pSession->ByteToRead = pSession->pLatestHead.iSizeStandby;
                         pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
                         pSession->wsaBuf_Recv.len = pSession->pLatestHead.iSizeStandby;
+                        if (pSession->pLatestHead.eOrderType == PREDATA::OrderType::SERVERCHATSHOOT)
+                        {
+                            int a = 10;
+                        }
                         break;
                     }
                 }
@@ -117,6 +124,10 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
                         pSession->ByteToRead = sizeof(PREDATA);
                         pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
                         pSession->wsaBuf_Recv.len = sizeof(PREDATA);
+                        if (pSession->pLatestHead.eOrderType == PREDATA::OrderType::SERVERCHATSHOOT)
+                        {
+                            int a = 10;
+                        }
                         break;
                     }
                 }
@@ -186,6 +197,9 @@ int CServerManager::Update()
     if (m_bClientConnected == true && m_Socket == INVALID_SOCKET)
     {
         CSceneMgr::Get_Instance()->Scene_Change(SC_WORLDMAP, false);
+        SR1_MSGBOX("Server Closed");
+        Release();
+        return 0;
     }
 
     ConnectTry();
@@ -204,6 +218,8 @@ void CServerManager::Late_Update()
 void CServerManager::Release()
 {
     ClearDatas();
+
+    m_bClientConnected = false;
 
     shutdown(m_Socket, SD_BOTH);
 
@@ -473,14 +489,8 @@ void CServerManager::ConnectTry()
 
 void CServerManager::ServerDamaged()
 {
-    ClearDatas();
-
-    m_bClientConnected = false;
-
     closesocket(m_Socket);
     m_Socket = INVALID_SOCKET;
-
-    CloseHandle(m_IOCPHandle);
 }
 
 PlayingRoomSessionDesc* CServerManager::GetRoomDescPtr()
@@ -489,7 +499,7 @@ PlayingRoomSessionDesc* CServerManager::GetRoomDescPtr()
         return nullptr;
 
     return &m_tRoomDesc;
-    
+
 }
 
 bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int DataSize)
@@ -507,7 +517,7 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
 
     case PREDATA::OrderType::SCENECHANGE_TOPLAY:
     {
-        ClearDatas();
+        //ClearDatas();
 
         CSceneMgr::Get_Instance()->Scene_Change(SC_STAGE4, true);
         PlayingRoomSessionDesc* pCast = static_cast<PlayingRoomSessionDesc*>(Data);
@@ -575,7 +585,8 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
         memcpy(&UserIndex, &Casted[sizeof(TempType)], sizeof(UserIndex));
         memcpy(&TempCharBuffer, &Casted[sizeof(TempType) + sizeof(TempType)], DataSize - (sizeof(TempType) + sizeof(TempType)));
         
-        wchar_t TempWCharBuffer[MAXCHATLEN + NULLSIZE] = {};
+        wchar_t TempWCharBuffer[MAXCHATLEN_TOC + NULLSIZE] = {};
+        int DebugSize = strlen(TempCharBuffer);
         MultiByteToWideChar(CP_UTF8, 0, TempCharBuffer, -1, &TempWCharBuffer[0], strlen(TempCharBuffer));
 
         wchar_t CompleteString[CMPCHAT] = {};
