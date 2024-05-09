@@ -33,8 +33,8 @@ using namespace std;
 #define BUFSIZE_1000 1000
 
 
-#define MAXCHATLEN 5
-#define MAXCHATLEN_TOC 10
+#define MAXCHATLEN 32
+#define MAXCHATLEN_TOC 64
 #define CMPCHAT 150
 #define NULLSIZE 1
 #define MAXCHATTINGSHOW 4000

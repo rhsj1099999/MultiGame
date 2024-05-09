@@ -76,43 +76,33 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
             {
                 if (pSession->bHeaderTransferred == false)
                 {
-                    //헤더가 캐싱된적이 없다
                     if (pSession->ByteTransferred < sizeof(PREDATA))
                     {
-                        //근데 헤더를 완성할 수 없다
                         pSession->wsaBuf_Recv.buf = &pSession->recvBuffer[pSession->ByteTransferred];
                         pSession->wsaBuf_Recv.len = pSession->ByteToRead;
                         break;
                     }
                     else
                     {
-                        //헤더를 캐싱할 수 있다.
                         pSession->bHeaderTransferred = true;
                         pSession->pLatestHead = *((PREDATA*)pSession->recvBuffer);
                         pSession->ByteTransferred = 0;
                         pSession->ByteToRead = pSession->pLatestHead.iSizeStandby;
                         pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
                         pSession->wsaBuf_Recv.len = pSession->pLatestHead.iSizeStandby;
-                        if (pSession->pLatestHead.eOrderType == PREDATA::OrderType::SERVERCHATSHOOT)
-                        {
-                            int a = 10;
-                        }
                         break;
                     }
                 }
                 else
                 {
-                    //헤더를 캐싱했다
                     if (pSession->ByteTransferred < pSession->ByteToRead)
                     {
-                        //데이터를 다 못읽었다.
                         pSession->wsaBuf_Recv.buf = &pSession->recvBuffer[pSession->ByteTransferred];
                         pSession->wsaBuf_Recv.len = pSession->ByteToRead;
                         break;
                     }
                     else
                     {
-                        //데이터를 다 읽었다.
                         ExecuetionMessage
                         (
                             pSession->pLatestHead.eOrderType,
@@ -124,10 +114,6 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
                         pSession->ByteToRead = sizeof(PREDATA);
                         pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
                         pSession->wsaBuf_Recv.len = sizeof(PREDATA);
-                        if (pSession->pLatestHead.eOrderType == PREDATA::OrderType::SERVERCHATSHOOT)
-                        {
-                            int a = 10;
-                        }
                         break;
                     }
                 }
@@ -314,8 +300,9 @@ void CServerManager::ChattingUpdate()
             wchar_t Buffer[MAX_PATH] = {};
             GetWindowText(g_hWndEdit, Buffer, MAXCHATLEN + 1);
             char Buffer_Char[MAXCHATLEN_TOC] = {};
-            WideCharToMultiByte(CP_UTF8, 0, Buffer, -1, Buffer_Char, sizeof(Buffer_Char), NULL, NULL);
-            int Byte = strnlen_s(Buffer_Char, MAXCHATLEN_TOC);
+
+            int Debug_WideLen = lstrlenW(Buffer);
+            int Byte = (Debug_WideLen * 2) + NULLSIZE;
             
             bool bIsOnlyBlank = true;
             for (int i = 0; i < Byte; i++)
@@ -327,7 +314,7 @@ void CServerManager::ChattingUpdate()
                 }
             }
 
-            if (Buffer_Char[0] != '\0' && bIsOnlyBlank == false && m_bClientConnected == true)
+            if (Buffer[0] != '\0' && bIsOnlyBlank == false && m_bClientConnected == true)
             {
                 char TempPacketPtr[MAX_PATH] = {};
                 MSGType TempMsgType = MSGType::User;
@@ -335,8 +322,8 @@ void CServerManager::ChattingUpdate()
                 memcpy(TempPacketPtr, &TempMsgType, sizeof(TempMsgType));
                 Debug = sizeof(m_tRoomDesc);
                 memcpy(&TempPacketPtr[sizeof(TempMsgType)], &m_tRoomDesc, sizeof(m_tRoomDesc));
-                memcpy(&TempPacketPtr[sizeof(TempMsgType) + sizeof(m_tRoomDesc)], &Buffer_Char, Byte);
-                MySend_Ptr(m_pSession, TempPacketPtr, Byte + sizeof(TempMsgType) + sizeof(m_tRoomDesc) + NULLSIZE, PREDATA::OrderType::CLIENTCHATSHOOT);
+                memcpy(&TempPacketPtr[sizeof(TempMsgType) + sizeof(m_tRoomDesc)], &Buffer, Byte);
+                MySend_Ptr(m_pSession, TempPacketPtr, Byte + sizeof(TempMsgType) + sizeof(m_tRoomDesc), PREDATA::OrderType::CLIENTCHATSHOOT);
             }
 
             SetWindowText(g_hWndEdit, L"");
@@ -517,13 +504,9 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
 
     case PREDATA::OrderType::SCENECHANGE_TOPLAY:
     {
-        //ClearDatas();
-
         CSceneMgr::Get_Instance()->Scene_Change(SC_STAGE4, true);
         PlayingRoomSessionDesc* pCast = static_cast<PlayingRoomSessionDesc*>(Data);
         CServerManager::Get_Instance()->SetRoomDesc(pCast);
-
-
 
         m_HoleVector.clear();
         m_HoleVector.resize(HOLE_HORIZON * HOLE_VERTICAL, true);
@@ -579,15 +562,11 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
 
         MSGType TempType = {};
         int UserIndex = -1;
-        char TempCharBuffer[MAXCHATLEN_TOC + NULLSIZE] = {};
+        wchar_t TempWCharBuffer[MAXCHATLEN_TOC + NULLSIZE] = {};
 
         memcpy(&TempType, Casted, sizeof(TempType));
         memcpy(&UserIndex, &Casted[sizeof(TempType)], sizeof(UserIndex));
-        memcpy(&TempCharBuffer, &Casted[sizeof(TempType) + sizeof(TempType)], DataSize - (sizeof(TempType) + sizeof(TempType)));
-        
-        wchar_t TempWCharBuffer[MAXCHATLEN_TOC + NULLSIZE] = {};
-        int DebugSize = strlen(TempCharBuffer);
-        MultiByteToWideChar(CP_UTF8, 0, TempCharBuffer, -1, &TempWCharBuffer[0], strlen(TempCharBuffer));
+        memcpy(&TempWCharBuffer, &Casted[sizeof(TempType) + sizeof(TempType)], DataSize - (sizeof(TempType) + sizeof(TempType)));
 
         wchar_t CompleteString[CMPCHAT] = {};
 
