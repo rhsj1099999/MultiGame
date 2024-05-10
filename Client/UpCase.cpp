@@ -6,6 +6,7 @@
 #include "AbstractFactory.h"
 #include "PirateHead.h"
 #include "SceneMgr.h"
+#include "CServerManager.h"
 
 CUpCase::CUpCase()
 {
@@ -45,22 +46,42 @@ void CUpCase::Initialize()
 	}
 	m_tInfo.vPos = { 400,300,0.0f };
 
-	
-	for (int i = 0; i < 15; i++)
+	float fRotateEach = 360.0f / HOLE_HORIZON;
+	float fEachVerticalOffset = 120.0f / HOLE_VERTICAL;
+
+	int DebugLastIndex = 0;
+	for (int i = 0; i < HOLE_HORIZON; i++)
 	{
-		for (int j = 0; j < 3; j++)
+		for (int j = 0; j < HOLE_VERTICAL; j++)
 		{
 			CObj* TempPtr = new CCaseHoles();
-			CCaseHoles* TempCastPtr = dynamic_cast<CCaseHoles*>(TempPtr);
-			TempCastPtr->Initialize();
-			TempCastPtr->AftInit(this, 0.0f + static_cast<float>(i) * 24.0f, 40.0f + j * 200);
-			CObjMgr::Get_Instance()->Add_Object(OBJ_CASEHOLES, TempPtr);
-			this->m_HolesPtrVector.push_back(TempPtr);
-		}
 
+			if (m_bIsServerMode == true)
+				TempPtr->SetServerMode(m_bIsServerMode);
+
+			CCaseHoles* TempCastPtr = static_cast<CCaseHoles*>(TempPtr);
+			TempCastPtr->Initialize();
+			TempCastPtr->AftInit(this, 0.0f + static_cast<float>(i) * fRotateEach, fEachVerticalOffset + j * 200);
+			CObjMgr::Get_Instance()->Add_Object(OBJ_CASEHOLES, TempPtr);
+
+			this->m_HolesPtrVector.push_back(TempCastPtr);
+			TempCastPtr->SetHoleIndex((i * HOLE_VERTICAL) + j);
+
+			DebugLastIndex = (i * HOLE_VERTICAL) + j;
+		}
 	}
+
+	int a = 10;
+	
+
+	if (m_bIsServerMode == true)
+	{
+		CServerManager::Get_Instance()->SetHoleVecPtr(&m_HolesPtrVector);
+	}
+
 	CObj* TempHeadPtr = new CPirateHead();
-	CPirateHead* TempHeadCastPtr = dynamic_cast<CPirateHead*>(TempHeadPtr);
+	CPirateHead* TempHeadCastPtr = static_cast<CPirateHead*>(TempHeadPtr);
+	m_pPirateHeadPtr = TempHeadCastPtr;
 	TempHeadCastPtr->Initialize();
 	TempHeadCastPtr->AftInit(this);
 	CObjMgr::Get_Instance()->Add_Object(OBJ_CASEHOLES, TempHeadCastPtr);
@@ -69,7 +90,7 @@ void CUpCase::Initialize()
 	int TempSizeInt = static_cast<int>(this->m_HolesPtrVector.size());
 	int GetMoneyInt = rand() % TempSizeInt;
 	int LoseMoneyInt = 0;
-	while (1)
+	while (true)
 	{
 		LoseMoneyInt = rand() % TempSizeInt;
 		if (GetMoneyInt != LoseMoneyInt)
@@ -77,42 +98,101 @@ void CUpCase::Initialize()
 			break;
 		}
 	}
-	CCaseHoles* TempCastPtr2 = dynamic_cast<CCaseHoles*>(this->m_HolesPtrVector[GetMoneyInt]);
+	CCaseHoles* TempCastPtr2 = static_cast<CCaseHoles*>(this->m_HolesPtrVector[GetMoneyInt]);
 	TempCastPtr2->SetReward(RWD_GETMONEY);
-	TempCastPtr2 = dynamic_cast<CCaseHoles*>(this->m_HolesPtrVector[LoseMoneyInt]);
+	TempCastPtr2 = static_cast<CCaseHoles*>(this->m_HolesPtrVector[LoseMoneyInt]);
 	TempCastPtr2->SetReward(RWD_LOSEALLMONEY);
 }
 
 int CUpCase::Update()
 {
-	if (CKeyMgr::Get_Instance()->Key_Pressing('Q'))
+	if (m_bIsServerMode == true)
 	{
-		m_fAngle += m_fAngleSpeed;
-
-		if (m_fAngle > 360.0f)
+		if (CServerManager::Get_Instance()->GetMyTurn() == true)
 		{
-			m_fAngle = 0.0f;
+			bool KeyPressed = false;
+			if (CKeyMgr::Get_Instance()->Key_Pressing('Q'))
+			{
+				m_fAngle += m_fAngleSpeed;
+
+				if (m_fAngle > 360.0f)
+					m_fAngle = 0.0f;
+
+				KeyPressed = true;
+			}
+			else
+			{
+				if (CKeyMgr::Get_Instance()->Key_Pressing('E'))
+				{
+					m_fAngle -= m_fAngleSpeed;
+
+					if (m_fAngle < 0.0f)
+						m_fAngle = 360.0f;
+
+					KeyPressed = true;
+				}
+			}
+
+			if (KeyPressed == true)
+			{
+				float GetPrevAngle = CServerManager::Get_Instance()->GetPrevAngle();
+
+				if (fabsf(GetPrevAngle - m_fAngle) > 7.5f)
+				{
+					CServerManager::Get_Instance()->SetPreviousAngle(m_fAngle);
+
+					ClientSession* pSession = CServerManager::Get_Instance()->GetSession();
+
+					PAK_ROTATEANGLE TempData = {};
+
+					int DebugSize = sizeof(TempData);
+
+					TempData.RoomSessionDesc = CServerManager::Get_Instance()->GetRoomDesc();
+
+					TempData.Angle = m_fAngle;
+
+					MySend<PAK_ROTATEANGLE>(pSession, TempData, PREDATA::OrderType::ROTATEANGLE);
+				}
+				
+				CServerManager::Get_Instance()->SetCurrentAngle(m_fAngle);
+			}
 		}
-		float TempRadian = m_fAngle * 3.14f / 180.0f;
-		m_tInfo.vLook.x = cos(TempRadian);
-		m_tInfo.vLook.y = sin(TempRadian);
+		else
+		{
+			m_fAngle = CServerManager::Get_Instance()->GetCurrentAngle();
+		}
 	}
 	else
 	{
-		if (CKeyMgr::Get_Instance()->Key_Pressing('E'))
-		{
-			m_fAngle -= m_fAngleSpeed;
 
-			if (m_fAngle < 0.0f)
+
+
+		if (CKeyMgr::Get_Instance()->Key_Pressing('Q'))
+		{
+			m_fAngle += m_fAngleSpeed;
+
+			if (m_fAngle > 360.0f)
+				m_fAngle = 0.0f;
+
+		}
+		else
+		{
+			if (CKeyMgr::Get_Instance()->Key_Pressing('E'))
 			{
-				m_fAngle = 360.0f;
+				m_fAngle -= m_fAngleSpeed;
+
+				if (m_fAngle < 0.0f)
+					m_fAngle = 360.0f;
 			}
-			float TempRadian = m_fAngle * 3.14f / 180.0f;
-			m_tInfo.vLook.x = cos(TempRadian);
-			m_tInfo.vLook.y = sin(TempRadian);
 		}
 	}
+
+	float TempRadian = m_fAngle * 3.14f / 180.0f;
+	m_tInfo.vLook.x = cos(TempRadian);
+	m_tInfo.vLook.y = sin(TempRadian);
+
 	Cal_WorldMatrix();
+
 	return 0;
 }
 

@@ -14,9 +14,10 @@ public:
 	~CAbstractFactory() {}
 
 public:
-	static CObj* Create(void)
+	static CObj* Create(bool bServerMode = false)
 	{
 		CObj* pObj = new T;
+		pObj->SetServerMode(bServerMode);
 		pObj->Initialize();
 
 		return pObj;

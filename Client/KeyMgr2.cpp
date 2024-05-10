@@ -16,8 +16,10 @@ CKeyMgr2::~CKeyMgr2()
 
 bool CKeyMgr2::Key_Down(int _iKey)
 {
-	//cout << cout.boolalpha;
-	//cout << m_bKeyState['B'] << "\n";
+	if (GetForegroundWindow() != g_hWnd)
+	{
+		return false;
+	}
 
 	if (!m_bKeyState[_iKey] && (GetAsyncKeyState(_iKey) & 0x8000))
 	{

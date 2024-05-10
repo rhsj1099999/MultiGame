@@ -2,7 +2,7 @@
 #include "Obj.h"
 class CPirateHead : public CObj
 {
-	CObj* m_pMakeMe = nullptr;
+	
 public: // Data
 public: // Func
 	CPirateHead();
@@ -24,5 +24,9 @@ public: // Func
 	void AftInit(CObj* parmObjPtr);
 	void SetReward(const REWARD& parmRewards);
 	void JudgeReward();
+	void SetForcedGoUp(bool bGoUp) { m_bForcedGoUp = bGoUp; }
+private:
+	CObj* m_pMakeMe = nullptr;
+	bool m_bForcedGoUp = false;
 };
 

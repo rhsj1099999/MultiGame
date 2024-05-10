@@ -15,11 +15,13 @@ void CPirateHead::Initialize()
 
 int CPirateHead::Update()
 {
-	CUpCase* TempCastPtr = dynamic_cast<CUpCase*>(m_pMakeMe);
-	if (TempCastPtr->GetIsStageEnd() == true)
+	CUpCase* TempCastPtr = static_cast<CUpCase*>(m_pMakeMe);
+
+	if (m_bForcedGoUp == true || TempCastPtr->GetIsStageEnd() == true)
 	{
 		m_fPirateHeadVelocity = -15.0f;
 	}
+	
 	m_tInfo.vPos.y += m_fPirateHeadVelocity;
 	return 0;
 }
