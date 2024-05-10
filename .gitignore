@@ -14,3 +14,5 @@ HISTORY.txt
 
 
 Client/x64/
+*.obj
+*.ilk
