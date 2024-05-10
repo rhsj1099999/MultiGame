@@ -73,28 +73,32 @@
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>$(SolutionDir)CoreLib\;$(DXSDK_DIR)Include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)MyLibs\$(Configuration);$(DXSDK_DIR)lib\x86;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)OutPut\$(Configuration)\$(Platform)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>$(SolutionDir)CoreLib\;$(SolutionDir)\ThirdParty\Include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)MyLibs\$(Configuration);$(SolutionDir)ThirdParty\Lib\x64;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)OutPut\$(Configuration)\$(Platform)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(SolutionDir)CoreLib\;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <LibraryPath>$(SolutionDir)MyLibs\$(Configuration);$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <OutDir>$(SolutionDir)OutPut\$(Configuration)\$(Platform)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(SolutionDir)CoreLib\;$(SolutionDir)\ThirdParty\Include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)MyLibs\$(Configuration);$(SolutionDir)ThirdParty\Lib\x64;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)OutPut\$(Configuration)\$(Platform)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions);SOLUTION_DIR=R"($(SolutionDir))";IPAddrDir=R"($(SolutionDir)IPAddress.txt)"</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
     </ClCompile>
     <Link>
@@ -108,7 +112,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions);SOLUTION_DIR=R"($(SolutionDir))";IPAddrDir=R"($(SolutionDir)IPAddress.txt)"</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
     </ClCompile>
     <Link>
@@ -123,7 +127,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions);SOLUTION_DIR=R"($(SolutionDir))";IPAddrDir=R"($(SolutionDir)IPAddress.txt)"</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
     </ClCompile>
     <Link>
@@ -140,7 +144,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions);SOLUTION_DIR=R"($(SolutionDir))";IPAddrDir=R"($(SolutionDir)IPAddress.txt)"</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
     </ClCompile>
     <Link>
@@ -226,6 +230,7 @@
     <ClInclude Include="Tunnel.h" />
     <ClInclude Include="UIMgr.h" />
     <ClInclude Include="UpCase.h" />
+    <ClInclude Include="WinEffect.h" />
     <ClInclude Include="WorldMap.h" />
   </ItemGroup>
   <ItemGroup>
@@ -298,6 +303,7 @@
     <ClCompile Include="Tunnel.cpp" />
     <ClCompile Include="UIMgr.cpp" />
     <ClCompile Include="UpCase.cpp" />
+    <ClCompile Include="WinEffect.cpp" />
     <ClCompile Include="WorldMap.cpp" />
   </ItemGroup>
   <ItemGroup>

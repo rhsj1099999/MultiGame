@@ -15,10 +15,15 @@ using namespace std;
 #define HOLE_VERTICAL 3
 
 
-#define MAXCLIENTS 1
+#define MAXCLIENTS 2
 
 #define CLIENT3 3
 #define CLIENT1 1
+#define WINEFFECTMAXSPEED 4
+#define WINEFFECTMINSPEED 1
+
+#define WINEFFECTMAXROTSPEED 30
+#define WINEFFECTMINROTSPEED 5
 
 
 #define BUF64 64
@@ -42,7 +47,7 @@ using namespace std;
 
 #define SENDHEARTBEATCYCLE 2000
 #define MAXCONNETTIME 10000
-#define MAXTIMEOUT 450000
+#define MAXTIMEOUT 3000
 #define MAXLATECOUNT 3
 
 enum class MSGType
@@ -99,6 +104,7 @@ struct PREDATA
         CLIENTCHATSHOOT,
         SOMECLIENTDEAD,
         GAMEEND,
+        FORCEDGAMEEND,
         END, //ERROR
     };
 

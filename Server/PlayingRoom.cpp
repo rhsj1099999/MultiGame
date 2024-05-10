@@ -13,7 +13,6 @@ CPlayingRoom::~CPlayingRoom()
 void CPlayingRoom::Init(ClientSession* pThreeSession[], list<ClientSession*>& pReturnList)
 {
 	m_iAnswerHole = rand() % (HOLE_HORIZON * HOLE_VERTICAL);
-
 	m_iPlayingOrder = rand() % MAXCLIENTS;
 
 	for (int i = 0; i < MAXCLIENTS; ++i)
@@ -45,7 +44,6 @@ void CPlayingRoom::ClientDead(ClientSession* pSession)
 			
 			if (m_iCurrPlayer <= 0)
 			{
-				//delete this;
 				CMainServer::GetInstance()->DeleteRoom(this);
 				cout << "Room Destroy" << endl;
 				return;
@@ -63,29 +61,50 @@ void CPlayingRoom::ClientDead(ClientSession* pSession)
 			}
 		}
 	}
-	char Buffer_Char[MAXCHATLEN_TOC] = {};
+
+
+
+	char Buffer_Char[MAX_PATH] = {};
+
 	MSGType TempType = MSGType::Sys;
 	memcpy(Buffer_Char, &TempType, sizeof(TempType));
 	memcpy(&Buffer_Char[sizeof(TempType)], &DisconnectedPlayer, sizeof(DisconnectedPlayer));
 
 	wchar_t Buffer[MAX_PATH] = {};
 	wsprintf(Buffer, L"Player [ %d ] Disconnected.", DisconnectedPlayer);
+	int CharByte = (lstrlenW(Buffer) * 2) + NULLSIZE;
+	memcpy(&Buffer_Char[sizeof(TempType) + sizeof(DisconnectedPlayer)], &Buffer, CharByte);
 	
-	WideCharToMultiByte(CP_UTF8, 0, Buffer, -1, &Buffer_Char[sizeof(TempType) + sizeof(DisconnectedPlayer)], sizeof(Buffer), NULL, NULL);
-
-	int Byte = lstrlenW(Buffer) * 2;
-	Byte += NULLSIZE + sizeof(TempType) + sizeof(DisconnectedPlayer);
-
-	for (int i = 0; i < MAXCLIENTS; i++)
+	if (m_iCurrPlayer == 1)
 	{
-		if (m_arrClients[i] == nullptr)
-			continue;
+		m_bIsGameEnd = true;
 
-		MySend_Ptr(m_arrClients[i], Buffer_Char, Byte, PREDATA::OrderType::SERVERCHATSHOOT);
-		MySend<int>(m_arrClients[i], m_iPlayingOrder, PREDATA::OrderType::TURNCHANGED);
+		for (int i = 0; i < MAXCLIENTS; i++)
+		{
+			if (m_arrClients[i] == nullptr)
+				continue;
+
+			//접속종료 메세지
+			MySend_Ptr(m_arrClients[i], Buffer_Char, sizeof(TempType) + sizeof(DisconnectedPlayer) + CharByte, PREDATA::OrderType::SERVERCHATSHOOT);
+			//우승-게임종료 메세지
+			MySend<int>(m_arrClients[i], m_iPlayingOrder, PREDATA::OrderType::FORCEDGAMEEND);
+		}
 	}
+	else
+	{
+		for (int i = 0; i < MAXCLIENTS; i++)
+		{
+			if (m_arrClients[i] == nullptr)
+				continue;
 
+			//접속종료 메세지
+			MySend_Ptr(m_arrClients[i], Buffer_Char, sizeof(TempType) + sizeof(DisconnectedPlayer) + CharByte, PREDATA::OrderType::SERVERCHATSHOOT);
 
+			//턴변경 메세지
+			if (m_bIsGameEnd == false)
+				MySend<int>(m_arrClients[i], m_iPlayingOrder, PREDATA::OrderType::TURNCHANGED);
+		}
+	}
 }
 
 void CPlayingRoom::ExecutionMessage_InRoom(PREDATA::OrderType eType, void* pData, int DataSize)
@@ -136,6 +155,8 @@ void CPlayingRoom::ExecutionMessage_InRoom(PREDATA::OrderType eType, void* pData
 
 		if (InsertedIndex == m_iAnswerHole)
 		{
+			m_bIsGameEnd = true;
+
 			char Temp[8] = {};
 			memcpy(Temp, &InsertedIndex, sizeof(int));
 			memcpy(&Temp[sizeof(int)], &pCasted->RoomSessionDesc.MyNumber, sizeof(int));

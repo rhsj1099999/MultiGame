@@ -5,6 +5,7 @@
 #include "KeyMgr.h"
 #include "MainGame.h"
 #include "PirateHead.h"
+#include <fstream>
 
 CServerManager* CServerManager::m_pInstance = nullptr;
 
@@ -50,10 +51,6 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
 
         if (bRet == FALSE || Bytes == 0)
         {
-            if (Bytes == 0 && m_IOCPHandle != INVALID_HANDLE_VALUE)
-            {
-                continue;
-            }
             ServerDamaged();
             return;
         }
@@ -256,12 +253,58 @@ void CServerManager::InitServer()
 		//Break;
 	}
 
+    std::string projectDirectory = "../OutPut/IPAddress.txt";
+
+    //exe -> ../../IPAddress.txt
+    //VC -> ../IPAddress.txt
+
+    bool bFileRead = false;
+
+    ifstream file(projectDirectory.c_str()); //VC Try
+
+    if (file.is_open())
+    {
+        bFileRead = true;
+    }
+    if (bFileRead == false) //EXE Try
+    {
+        file.close();
+        projectDirectory = "../../IPAddress.txt";
+        file = ifstream(projectDirectory.c_str());
+
+        if (file.is_open())
+        {
+            bFileRead = true;
+        }
+    }
+
+    if (bFileRead == false)
+    {
+        SR1_MSGBOX("Failed to open the file");
+        return;
+    }
+
+
+    string line;
+    if (!(getline(file, line)))
+    {
+        SR1_MSGBOX("Failed to Read");
+        return;
+    }
+
 	ZeroMemory(&m_ServerAddr, sizeof(m_ServerAddr));
 	m_ServerAddr.sin_family = AF_INET;
-	inet_pton(AF_INET, "127.0.0.1", &m_ServerAddr.sin_addr);
+	inet_pton(AF_INET, line.c_str(), &m_ServerAddr.sin_addr);
 	m_ServerAddr.sin_port = htons(7777);
+    file.close();
 
- 
+    if (g_hWndEdit == NULL)
+    {
+        g_hWndEdit = CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", L"", WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+            50, 50, 200, 30, g_hWnd, NULL, g_hInstance, NULL);
+
+        ShowWindow(g_hWndEdit, SW_HIDE);
+    }
 }
 
 bool CServerManager::ChattingLengthCheck()
@@ -279,13 +322,8 @@ void CServerManager::ChattingShowOn()
 
 void CServerManager::ChattingUpdate()
 {
-    if (g_hWndEdit == NULL)
-    {
-        g_hWndEdit = CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", L"", WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
-            50, 50, 200, 30, g_hWnd, NULL, g_hInstance, NULL);
-
-        ShowWindow(g_hWndEdit, SW_HIDE);
-    }
+    if (m_bClientConnected == false)
+        return;
 
     if (CKeyMgr::Get_Instance()->Key_Down(VK_RETURN) && GetForegroundWindow() == g_hWnd)
     {
@@ -606,24 +644,55 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
         char* Casted = static_cast<char*>(Data);
 
         int Inserted = 0;
-        int WhoWins = 0;
 
         memcpy(&Inserted, Casted, sizeof(int));
-        memcpy(&WhoWins, &Casted[sizeof(int)], sizeof(int));
-
-        m_iWhoWins = WhoWins;
+        memcpy(&m_iWhoWins, &Casted[sizeof(int)], sizeof(int));
 
         m_HoleVector[Inserted] = false;
-        (*m_vecCaseHoles)[Inserted]->SetIsInserted(true, WhoWins);
+        (*m_vecCaseHoles)[Inserted]->SetIsInserted(true, m_iWhoWins);
 
         m_bCanMove = false;
 
-        if (m_tRoomDesc.MyNumber == WhoWins)
+        if (m_tRoomDesc.MyNumber == m_iWhoWins)
         {
             //Effect
             m_bIMWIN = true;
         }
 
+        wchar_t TempVictoryMessage[MAX_PATH] = {};
+        wsprintf(TempVictoryMessage, L"System : Player [ %d ] Win.", m_iWhoWins);
+        EnterCriticalSection_Chat();
+        m_Chattings.push_front(ChattingMessageDesc
+        (
+            MSGType::Sys,
+            TempVictoryMessage,
+            CMainGame::Get_Instance()->GetCurrTime()
+        ));
+        LeaveCriticalSection_Chat();
+
+    }
+        break;
+    case PREDATA::OrderType::FORCEDGAMEEND:
+    {
+        m_bGameIsEnd = true;
+        memcpy(&m_iWhoWins, Data, sizeof(int));
+        m_bCanMove = false;
+        if (m_tRoomDesc.MyNumber == m_iWhoWins)
+        {
+            //Effect
+            m_bIMWIN = true;
+        }
+
+        wchar_t TempVictoryMessage[MAX_PATH] = {};
+        wsprintf(TempVictoryMessage, L"System : Player [ %d ] Win.", m_iWhoWins);
+        EnterCriticalSection_Chat();
+        m_Chattings.push_front(ChattingMessageDesc
+        (
+            MSGType::Sys,
+            TempVictoryMessage,
+            CMainGame::Get_Instance()->GetCurrTime()
+        ));
+        LeaveCriticalSection_Chat();
     }
         break;
 

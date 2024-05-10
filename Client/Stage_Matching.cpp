@@ -41,8 +41,7 @@ void Stage_Matching::Render(HDC hDC)
     }
     else
     {
-        int MaxUsers = 3;
-        wsprintf(szBuff, L"매칭중... 인원수 = %d / %d", CServerManager::Get_Instance()->GetServerUser(), MaxUsers);
+        wsprintf(szBuff, L"매칭중... 인원수 = %d / %d", CServerManager::Get_Instance()->GetServerUser(), MAXCLIENTS);
         TextOut(hDC, WINCX / 2, WINCY / 2, szBuff, lstrlen(szBuff));
     }
 
@@ -52,8 +51,6 @@ void Stage_Matching::Render(HDC hDC)
 
 void Stage_Matching::Release()
 {
-
     CObjMgr::Get_Instance()->Release();
-
     CObjMgr::Get_Instance()->Destroy_Instance();
 }

@@ -11,11 +11,6 @@ class CDownCase : public CObj
 public: // Data
 public: // Func
 	CDownCase();
-	//virtual void		Initialize(void)PURE;
-	//virtual int			Update(void)PURE;
-	//virtual void		Late_Update(void)PURE;
-	//virtual void		Render(HDC hDC)PURE;
-	//virtual void		Release(void)PURE;
 
 	virtual void Initialize() override;
 	virtual int Update() override;

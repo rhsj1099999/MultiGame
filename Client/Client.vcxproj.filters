@@ -231,6 +231,9 @@
     <ClInclude Include="CServerManager.h">
       <Filter>02. Design\07. ServerMgr</Filter>
     </ClInclude>
+    <ClInclude Include="WinEffect.h">
+      <Filter>01. Obj\07. HSJ</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -337,6 +340,9 @@
     </ClCompile>
     <ClCompile Include="CServerManager.cpp">
       <Filter>02. Design\07. ServerMgr</Filter>
+    </ClCompile>
+    <ClCompile Include="WinEffect.cpp">
+      <Filter>01. Obj\07. HSJ</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

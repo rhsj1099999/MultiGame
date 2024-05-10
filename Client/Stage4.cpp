@@ -7,6 +7,8 @@
 #include "KeyMgr.h"
 #include "CServerManager.h"
 #include "PirateHead.h"
+#include "MainGame.h"
+#include "WinEffect.h"
 
 CStage4::CStage4()
 {
@@ -53,6 +55,16 @@ void CStage4::Update()
 		CObjMgr::Get_Instance()->Update();
 	}
 
+	if (m_bIsServerMode == true && CServerManager::Get_Instance()->GetWin() == true)
+	{
+		m_dwWinEffectAcc += CMainGame::Get_Instance()->GetDeltaTime();
+		if (m_dwWinEffectAcc >= m_dwWinEffect)
+		{
+			m_dwWinEffectAcc = 0;
+
+			CObjMgr::Get_Instance()->Add_Object(OBJ_WINEFFECT, CAbstractFactory<CWinEffect>::Create());
+		}
+	}
 }
 
 void CStage4::Late_Update()

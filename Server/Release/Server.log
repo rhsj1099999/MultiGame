@@ -1,0 +1,12 @@
+﻿LINK : warning C4727: 타임스탬프가 동일한 c:\users\rhsj\desktop\multigame\server\release\server.pch PCH가 c:\users\rhsj\desktop\multigame\server\release\playingroom.obj 및 c:\users\rhsj\desktop\multigame\server\release\main.obj에 있습니다.  첫 번째 PCH를 사용합니다.
+PlayingRoom.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: int __thiscall CMyCQ::GetSize(void)" (?GetSize@CMyCQ@@QAEHXZ)
+PlayingRoom.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: void * __thiscall CMyCQ::GetFrontPtr(void)" (?GetFrontPtr@CMyCQ@@QAEPAXXZ)
+PlayingRoom.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: bool __thiscall CMyCQ::isFull_Add(int)" (?isFull_Add@CMyCQ@@QAE_NH@Z)
+PlayingRoom.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: bool __thiscall CMyCQ::isFull(void)" (?isFull@CMyCQ@@QAE_NXZ)
+PlayingRoom.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: bool __thiscall CMyCQ::isEmpty(void)" (?isEmpty@CMyCQ@@QAE_NXZ)
+PlayingRoom.obj : error LNK2001: 확인할 수 없는 외부 기호 "bool __cdecl MySend_Ptr(struct ClientSession *,void *,int,enum PREDATA::OrderType)" (?MySend_Ptr@@YA_NPAUClientSession@@PAXHW4OrderType@PREDATA@@@Z)
+MainServer.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: char * __thiscall CMyCQ::GetBuffer(void)" (?GetBuffer@CMyCQ@@QAEPADXZ)
+MainServer.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: void __thiscall CMyCQ::Dequq_N(int)" (?Dequq_N@CMyCQ@@QAEXH@Z)
+MainServer.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: __thiscall CMyCQ::~CMyCQ(void)" (??1CMyCQ@@QAE@XZ)
+MainServer.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: __thiscall CMyCQ::CMyCQ(int)" (??0CMyCQ@@QAE@H@Z)
+C:\Users\rhsj\Desktop\MultiGame\OutPut\Release\Win32\Server.exe : fatal error LNK1120: 10개의 확인할 수 없는 외부 참조입니다.

@@ -14,5 +14,9 @@ public:
 	virtual void Late_Update() override;
 	virtual void Render(HDC hDC) override;
 	virtual void Release() override;
+
+private:
+	DWORD m_dwWinEffectAcc = 0;
+	DWORD m_dwWinEffect = 500;
 };
 

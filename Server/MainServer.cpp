@@ -1,9 +1,11 @@
 #include "stdafx.h"
 #include "MainServer.h"
 
-
 #include "Timer.h"
 #include "PlayingRoom.h"
+#include <fstream>
+#include <string>
+
 
 CMainServer* CMainServer::m_pInstance = nullptr;
 
@@ -87,11 +89,53 @@ void CMainServer::Init()
     //setsockopt(m_Socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&bEnable, sizeof(bEnable));
     setsockopt(m_Socket, IPPROTO_TCP, TCP_NODELAY, (const char*)&bEnable, sizeof(bEnable));
 
+
+    std::string projectDirectory = "../OutPut/IPAddress.txt";
+
+    //exe -> ../../IPAddress.txt
+    //VC -> ../IPAddress.txt
+
+    bool bFileRead = false;
+    
+    ifstream file(projectDirectory.c_str()); //VC Try
+    
+    if (file.is_open())
+    {
+        bFileRead = true;
+    }
+    if (bFileRead == false) //EXE Try
+    {
+        file.close();
+        projectDirectory = "../../IPAddress.txt";
+        file = ifstream(projectDirectory.c_str());
+
+        if (file.is_open())
+        {
+            bFileRead = true;
+        }
+    }
+
+    if (bFileRead == false)
+    {
+        SR1_MSGBOX("Failed to open the file");
+        return;
+    }
+    
+    
+    string line;
+    if (!(getline(file, line)))
+    {
+        SR1_MSGBOX("Failed to Read");
+        return;
+    }
+    
     SOCKADDR_IN m_ServerAddr;
     ZeroMemory(&m_ServerAddr, sizeof(m_ServerAddr));
     m_ServerAddr.sin_family = AF_INET;
-    m_ServerAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    inet_pton(AF_INET, line.c_str(), &m_ServerAddr.sin_addr);
     m_ServerAddr.sin_port = htons(7777);
+    file.close();
+
 
     if (bind(m_Socket, (SOCKADDR*)&m_ServerAddr, sizeof(m_ServerAddr)) == SOCKET_ERROR)
     {
@@ -108,6 +152,10 @@ void CMainServer::Init()
                 WorkerEntry_D(m_IOCPHandle);
             }));
     }
+
+    char serverIP[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &m_ServerAddr.sin_addr, serverIP, INET_ADDRSTRLEN);
+    std::cout << "Server IP: " << serverIP << std::endl;
 
     cout << "Now Listen Try" << endl;
 
