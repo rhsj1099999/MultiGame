@@ -95,6 +95,7 @@ void CPlayingRoom::ClientDead(ClientSession* pSession)
 			if (bTempGameEndSig)
 			{
 				//우승-게임종료 메세지
+				cout << "One Room's Game End / OnePlayer" << endl;
 				MySend<int>(m_arrClients[i], m_iPlayingOrder, PREDATA::OrderType::FORCEDGAMEEND);
 			}
 		}
@@ -174,6 +175,8 @@ void CPlayingRoom::ExecutionMessage_InRoom(PREDATA::OrderType eType, void* pData
 			{
 				if (m_arrClients[i] == nullptr)
 					continue;
+
+				cout << "One Room's Game End / Find Answer" << endl;
 
 				MySend_Ptr(m_arrClients[i], Temp, sizeof(int) * 2, PREDATA::OrderType::GAMEEND);
 			}
