@@ -47,6 +47,7 @@ void CStage4::Update()
 			CServerManager::Get_Instance()->ClearDatas();
 			CServerManager::Get_Instance()->Release();
 			CServerManager::Get_Instance()->Destroy_Instance();
+			CServerManager::Get_Instance()->SetCanChat(false);
 		}
 		CSceneMgr::Get_Instance()->Scene_Change(SC_WORLDMAP);
 	}

@@ -307,22 +307,40 @@ void CServerManager::InitServer()
     }
 }
 
-bool CServerManager::ChattingLengthCheck()
-{
-    return true;
-}
+//bool CServerManager::ChattingLengthCheck()
+//{
+//    return true;
+//}
+//
+//void CServerManager::ChattingShowOn()
+//{
+//    if (g_hWndEdit != NULL)
+//    {
+//        ShowWindow(g_hWndEdit, SW_SHOW);
+//    }
+//}
 
-void CServerManager::ChattingShowOn()
-{
-    if (g_hWndEdit != NULL)
+void CServerManager::SetCanChat(bool bCanChat) 
+{ 
+    m_bCanChat = bCanChat;
+
+    m_Chattings.clear();
+
+    if (g_hWndEdit != INVALID_HANDLE_VALUE)
     {
-        ShowWindow(g_hWndEdit, SW_SHOW);
+        SetWindowText(g_hWndEdit, L"");
+        SendMessage(g_hWndEdit, EM_SETSEL, (WPARAM)-1, (LPARAM)-1);
+
+        m_bIsChatReady = false;
+        ShowWindow(g_hWndEdit, SW_HIDE);
+        SetFocus(g_hWnd);
     }
 }
 
 void CServerManager::ChattingUpdate()
 {
-    if (m_bClientConnected == false)
+
+    if (m_bClientConnected == false || m_bCanChat == false)
         return;
 
     if (CKeyMgr::Get_Instance()->Key_Down(VK_RETURN) && GetForegroundWindow() == g_hWnd)
@@ -366,7 +384,6 @@ void CServerManager::ChattingUpdate()
 
             SetWindowText(g_hWndEdit, L"");
             SendMessage(g_hWndEdit, EM_SETSEL, (WPARAM)-1, (LPARAM)-1);
-            GetWindowText(g_hWndEdit, Buffer, MAXCHATLEN + 1);
 
             m_bIsChatReady = false;
             ShowWindow(g_hWndEdit, SW_HIDE);
@@ -389,7 +406,7 @@ void CServerManager::ChattingUpdate()
 
 void CServerManager::ShowChattings(HDC hDC)
 {
-    if (m_Chattings.size() == 0)
+    if (m_Chattings.size() == 0 || m_bClientConnected == false || m_bCanChat == false)
         return;
 
     DWORD CurrTime = CMainGame::Get_Instance()->GetCurrTime();
@@ -548,6 +565,7 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
 
         m_HoleVector.clear();
         m_HoleVector.resize(HOLE_HORIZON * HOLE_VERTICAL, true);
+        SetCanChat(true);
     }
 
         break;

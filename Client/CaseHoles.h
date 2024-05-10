@@ -54,11 +54,15 @@ public:
 		m_iColorIndex = PlayerIndex;
 	}
 	vector<D3DXVECTOR3> PointVector;
-	COLORREF m_Colors[3] =
+	COLORREF m_Colors[ALLOWMAXCLIENTS] =
 	{
 		RGB(255, 0, 0),
 		RGB(0, 255, 0),
-		RGB(0, 0, 255)
+		RGB(0, 0, 255),
+		RGB(255, 255, 0),
+		RGB(0, 255, 255),
+		RGB(255, 0, 255),
+		RGB(0, 0, 0)
 	};
 	//vector<>
 public: // Data

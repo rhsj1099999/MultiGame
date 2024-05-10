@@ -28,8 +28,12 @@ public:
 	void	InitServer();
 
 
-	bool ChattingLengthCheck();
-	void ChattingShowOn();
+	//bool ChattingLengthCheck();
+	//void ChattingShowOn();
+private:
+	bool m_bCanChat = false;
+public:
+	void SetCanChat(bool bCanChat);
 	void ChattingUpdate();
 	void ShowChattings(HDC hDC);
 	void Render(HDC hDC);
@@ -46,6 +50,9 @@ public:
 	ClientSession* GetSession() { return m_pSession; }
 	PlayingRoomSessionDesc* GetRoomDescPtr();
 	PlayingRoomSessionDesc& GetRoomDesc() { return m_tRoomDesc; }
+
+
+
 	
 public:
 

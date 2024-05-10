@@ -14,8 +14,8 @@ using namespace std;
 #define HOLE_HORIZON 8
 #define HOLE_VERTICAL 3
 
-
-#define MAXCLIENTS 2
+#define MAXCLIENTS 3
+#define ALLOWMAXCLIENTS 7
 
 #define CLIENT3 3
 #define CLIENT1 1
@@ -39,7 +39,7 @@ using namespace std;
 
 
 #define MAXCHATLEN 32
-#define MAXCHATLEN_TOC 64
+#define MAXCHATLEN_TOC (MAXCHATLEN * 2)
 #define CMPCHAT 150
 #define NULLSIZE 1
 #define MAXCHATTINGSHOW 4000

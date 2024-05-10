@@ -33,7 +33,14 @@ int CDownCase::Update()
 {
 	if (m_bIsServerMode == true)
 	{
-		m_fAngle = CServerManager::Get_Instance()->GetCurrentAngle();
+		if (m_bFirstTick == false)
+		{
+			m_fAngle = 0.0f;
+		}
+		else
+		{
+			m_fAngle = CServerManager::Get_Instance()->GetCurrentAngle();
+		}
 	}
 	else
 	{

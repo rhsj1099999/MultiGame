@@ -75,10 +75,15 @@ void CPlayingRoom::ClientDead(ClientSession* pSession)
 	int CharByte = (lstrlenW(Buffer) * 2) + NULLSIZE;
 	memcpy(&Buffer_Char[sizeof(TempType) + sizeof(DisconnectedPlayer)], &Buffer, CharByte);
 	
+	bool bTempGameEndSig = false;
+
+	if (m_bIsGameEnd == false)
+	{
+		bTempGameEndSig = true;
+	}
+
 	if (m_iCurrPlayer == 1)
 	{
-		m_bIsGameEnd = true;
-
 		for (int i = 0; i < MAXCLIENTS; i++)
 		{
 			if (m_arrClients[i] == nullptr)
@@ -86,8 +91,12 @@ void CPlayingRoom::ClientDead(ClientSession* pSession)
 
 			//접속종료 메세지
 			MySend_Ptr(m_arrClients[i], Buffer_Char, sizeof(TempType) + sizeof(DisconnectedPlayer) + CharByte, PREDATA::OrderType::SERVERCHATSHOOT);
-			//우승-게임종료 메세지
-			MySend<int>(m_arrClients[i], m_iPlayingOrder, PREDATA::OrderType::FORCEDGAMEEND);
+
+			if (bTempGameEndSig)
+			{
+				//우승-게임종료 메세지
+				MySend<int>(m_arrClients[i], m_iPlayingOrder, PREDATA::OrderType::FORCEDGAMEEND);
+			}
 		}
 	}
 	else

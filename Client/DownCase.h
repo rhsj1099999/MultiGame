@@ -11,7 +11,7 @@ class CDownCase : public CObj
 public: // Data
 public: // Func
 	CDownCase();
-
+	bool m_bFirstTick = false;
 	virtual void Initialize() override;
 	virtual int Update() override;
 	virtual void Late_Update() override;

@@ -52,16 +52,16 @@ C:\Users\rhsj\Desktop\MultiGame\Client\CaseHoles.cpp(228,26): warning C4244: '�
 C:\Users\rhsj\Desktop\MultiGame\Client\CaseHoles.cpp(227,23): warning C4244: '인수': 'float'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
   CollisionMgr.cpp
   CServerManager.cpp
-C:\Users\rhsj\Desktop\MultiGame\Client\CServerManager.cpp(423,110): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\rhsj\Desktop\MultiGame\Client\CServerManager.cpp(440,110): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
   DownCase.cpp
 C:\Users\rhsj\Desktop\MultiGame\Client\DownCase.cpp(19,20): warning C4244: '초기화 중': 'double'에서 'float'(으)로 변환하면서 데이터가 손실될 수 있습니다.
 C:\Users\rhsj\Desktop\MultiGame\Client\DownCase.cpp(25,20): warning C4244: '초기화 중': 'double'에서 'float'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\Users\rhsj\Desktop\MultiGame\Client\DownCase.cpp(79,24): warning C4244: '인수': 'float'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\Users\rhsj\Desktop\MultiGame\Client\DownCase.cpp(78,24): warning C4244: '인수': 'float'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\Users\rhsj\Desktop\MultiGame\Client\DownCase.cpp(88,25): warning C4244: '인수': 'float'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\Users\rhsj\Desktop\MultiGame\Client\DownCase.cpp(87,25): warning C4244: '인수': 'float'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\Users\rhsj\Desktop\MultiGame\Client\DownCase.cpp(95,24): warning C4244: '인수': 'float'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\Users\rhsj\Desktop\MultiGame\Client\DownCase.cpp(94,24): warning C4244: '인수': 'float'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\rhsj\Desktop\MultiGame\Client\DownCase.cpp(86,24): warning C4244: '인수': 'float'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\rhsj\Desktop\MultiGame\Client\DownCase.cpp(85,24): warning C4244: '인수': 'float'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\rhsj\Desktop\MultiGame\Client\DownCase.cpp(95,25): warning C4244: '인수': 'float'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\rhsj\Desktop\MultiGame\Client\DownCase.cpp(94,25): warning C4244: '인수': 'float'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\rhsj\Desktop\MultiGame\Client\DownCase.cpp(102,24): warning C4244: '인수': 'float'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\rhsj\Desktop\MultiGame\Client\DownCase.cpp(101,24): warning C4244: '인수': 'float'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
   Client.cpp
   KeyMgr.cpp
   KeyMgr2.cpp
