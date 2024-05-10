@@ -1,4 +1,4 @@
-.vs
+.vs/
 .htaccess
 css.php
 rpc/
@@ -7,11 +7,10 @@ sites/site*/private/
 sites/site*/public/admin/
 sites/site*/public/setup/
 sites/site*/public/theme/
-textpattern/
+Server/x64/
+Client/x64/
 HISTORY.txt
-README.txt
-.zip
-.obj
+*.obj
 
-Server/x64/*.*
-Client/x64/*.*
+
+Client/x64/
