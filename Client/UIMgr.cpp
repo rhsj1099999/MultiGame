@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "UIMgr.h"
-
+#include "CServerManager.h"
 #include "SceneMgr.h"
 
 CUIMgr* CUIMgr::m_pInstance = nullptr;
@@ -74,10 +74,58 @@ void CUIMgr::Render(HDC hDC)
 	//	wsprintf(szBuff, L"소지금 : %d달러", m_iMoney);
 	//	TextOut(hDC, 350, 25, szBuff, lstrlen(szBuff));
 	//}
-
+	RenderTutorial(hDC);
 
 }
 
 void CUIMgr::Update()
 {
+}
+
+void CUIMgr::RenderTutorial(HDC hDC)
+{
+	m_UIRenderStep = 0.0f;
+
+	RenderSceneChange(hDC, m_tUIRenderDesc);
+
+	RenderHowtoPlay(hDC, m_tUIRenderDesc);
+}
+
+
+
+void CUIMgr::RenderSceneChange(HDC hDC, UIRenderDesc& Desc)
+{
+	SIZE TextSize = {};
+
+	switch (CSceneMgr::Get_Instance()->GetCurSceneID())
+	{
+	case SC_WORLDMAP:
+		SetUIText(hDC, Desc, TextSize, L"ESC : 게임종료");
+		break;
+
+	default:
+		SetUIText(hDC, Desc, TextSize, L"ESC : 월드맵으로 이동");
+		break;
+	}
+}
+
+void CUIMgr::RenderHowtoPlay(HDC hDC, UIRenderDesc& Desc)
+{
+	SIZE TextSize = {};
+
+	switch (CSceneMgr::Get_Instance()->GetCurSceneID())
+	{
+	case SC_WORLDMAP:
+		SetUIText(hDC, Desc, TextSize, L"방향키 : 이동");
+		break;
+
+	case SC_STAGE4:
+		SetUIText(hDC, Desc, TextSize, L"Q, E : 통 굴리기");
+		
+		if (CServerManager::Get_Instance()->GetClientConnected() == true)
+			SetUIText(hDC, Desc, TextSize, L"Enter : 채팅");
+
+		SetUIText(hDC, Desc, TextSize, L"클릭 : 칼 꼽기");
+		break;
+	}
 }

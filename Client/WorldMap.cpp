@@ -3,6 +3,7 @@
 #include "AbstractFactory.h"
 #include "UIMgr.h"
 #include "ObjMgr.h"
+#include "KeyMgr.h"
 #include "SceneMgr.h"
 
 CWorldMap::CWorldMap()
@@ -20,13 +21,14 @@ void CWorldMap::Initialize()
 	CObjMgr::Get_Instance()->Add_Object(OBJ_PORTAL, CAbstractFactory<CPortal>::Create_Portal(100, 50, 0));
 	CObjMgr::Get_Instance()->Add_Object(OBJ_PORTAL, CAbstractFactory<CPortal>::Create_Portal(700, 50, 1));
 	CObjMgr::Get_Instance()->Add_Object(OBJ_PORTAL, CAbstractFactory<CPortal>::Create_Portal(100, 550, 2));
-	//CObjMgr::Get_Instance()->Add_Object(OBJ_PORTAL, CAbstractFactory<CPortal>::Create_Portal(700, 550, 4));
-	//// Exit Æ÷Å»
-	//CObjMgr::Get_Instance()->Add_Object(OBJ_PORTAL, CAbstractFactory<CPortal>::Create_Portal(700, 300, 5));
 }
 
 void CWorldMap::Update()
 {
+	if (CKeyMgr::Get_Instance()->Key_Down(VK_ESCAPE))
+	{
+		PostQuitMessage(0);
+	}
 	CObjMgr::Get_Instance()->Update();
 }
 

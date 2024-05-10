@@ -1,3 +1,8 @@
-﻿  PlayingRoom.cpp
+﻿  Base.cpp
+  MainServer.cpp
+  MainInstance.cpp
+  Main.cpp
+  PlayingRoom.cpp
+  Timer.cpp
   stdafx.cpp
   Server.vcxproj -> C:\Users\rhsj\Desktop\MultiGame\OutPut\Debug\x64\Server.exe

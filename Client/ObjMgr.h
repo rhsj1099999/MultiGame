@@ -15,10 +15,6 @@ public:
 	void	Release();
 
 public:
-	void	Spin_Roulette();
-	void	Roulette_Result();
-
-public:
 	static CObjMgr* Get_Instance()
 	{
 		if (!m_pInstance)

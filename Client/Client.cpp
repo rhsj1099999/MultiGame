@@ -22,7 +22,6 @@ LONG_PTR g_Proc;
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
-LRESULT CALLBACK    WndProc_Chatting(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,			// 메모리에 할당되는 실체, 즉 객체
@@ -30,6 +29,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,			// 메모리에 할당되는 실체, 즉 
                      _In_ LPWSTR    lpCmdLine,			// 유니코드, 아스키코드 모두 호환하는 문자열을 만든 STRING 클래스
                      _In_ int       nCmdShow)			// Ctrl + F5를 통해 창 실행 가능, 실행한 창의 스타일을 매개 변수 형태로 넘겨받음
 {
+
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF); // 메모리 누수 감지를 위한 코드
 	//_CrtSetBreakAlloc(304);
     UNREFERENCED_PARAMETER(hPrevInstance);
@@ -62,8 +62,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,			// 메모리에 할당되는 실체, 즉 
     pMainGame->Initialize();
 
 	DWORD	dwOldTime = GetTickCount();
-
-    g_Proc = (LONG_PTR)WndProc_Chatting;
 
     while (true)
     {
@@ -106,8 +104,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     WNDCLASSEXW wcex;
 
     wcex.cbSize = sizeof(WNDCLASSEX);
-
-    wcex.style          = CS_HREDRAW | CS_VREDRAW;
+    wcex.style          = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
     wcex.lpfnWndProc    = WndProc;
     wcex.cbClsExtra     = 0;
     wcex.cbWndExtra     = 0;
@@ -133,7 +130,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
    
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
+   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME | WS_CLIPCHILDREN,
       CW_USEDEFAULT, 0,		// 생성된 창을 출력하는 윈도우 창 기준 LEFT 와 TOP 위치 
 	  rc.right - rc.left, 
 	  rc.bottom - rc.top,	// 생성하고자 하는 창의 가로사이즈와, 세로 사이즈
@@ -179,7 +176,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         HDC hdc = BeginPaint(hWnd, &ps);
         EndPaint(hWnd, &ps);
     }
-
+    case WM_NCLBUTTONDBLCLK:
+        break;
 	case WM_KEYDOWN:
 		break;
 
@@ -193,44 +191,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-
-LRESULT CALLBACK WndProc_Chatting(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    switch (message)
-    {
-    case WM_COMMAND:
-    {
-        int wmId = LOWORD(wParam);
-        // 메뉴 선택을 구문 분석합니다:
-        switch (wmId)
-        {
-        case IDM_ABOUT:
-            DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-            break;
-        case IDM_EXIT:
-            DestroyWindow(hWnd);
-            break;
-        default:
-            return DefWindowProc(hWnd, message, wParam, lParam);
-        }
-    }
-    break;
-    case WM_PAINT:
-    {
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hWnd, &ps);
-        // TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
-        EndPaint(hWnd, &ps);
-    }
-    break;
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        break;
-    default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
-    }
-    return 0;
-}
 
 // 정보 대화 상자의 메시지 처리기입니다.
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)

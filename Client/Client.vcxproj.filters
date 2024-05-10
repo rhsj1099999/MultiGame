@@ -55,35 +55,8 @@
     <Filter Include="02. Design\05. CollisionMgr">
       <UniqueIdentifier>{7d6de1f7-e598-49e8-aa55-755435d1da39}</UniqueIdentifier>
     </Filter>
-    <Filter Include="03. Scene\01. Stage1">
-      <UniqueIdentifier>{e45151c6-d645-4232-af79-fbc73287150e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="03. Scene\02. Stage2">
-      <UniqueIdentifier>{a6972c1b-36d0-46af-89be-a8c14f53a865}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="03. Scene\03. Stage3">
-      <UniqueIdentifier>{beb143ef-48d4-41b2-bb4a-6ab6f2838c52}</UniqueIdentifier>
-    </Filter>
     <Filter Include="03. Scene\04. Stage4">
       <UniqueIdentifier>{2cf94980-39cf-4888-9757-438e3db9f8ea}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01. Obj\02. FishingRod">
-      <UniqueIdentifier>{9d693fca-b6d4-4258-9ca0-441dea1cad80}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01. Obj\03. Fish">
-      <UniqueIdentifier>{eb27354a-49eb-4775-af22-8d51d97a40e7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01. Obj\04. Roulette">
-      <UniqueIdentifier>{07eddc65-3ac7-43d4-b593-21fd048597a8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01. Obj\04. Roulette\Arrow">
-      <UniqueIdentifier>{c9ed39c6-7b41-4d20-8974-32766bf01d5f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01. Obj\05. Betting">
-      <UniqueIdentifier>{82e1a608-a6e0-4939-a46f-51d121ff062d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01. Obj\06. MoleHunt">
-      <UniqueIdentifier>{3e82bc95-ed26-492b-832f-e18da721f4d0}</UniqueIdentifier>
     </Filter>
     <Filter Include="02. Design\06. KeyMgr2">
       <UniqueIdentifier>{b0dc4593-7715-44fa-87f3-cc3a0f13a956}</UniqueIdentifier>
@@ -162,41 +135,8 @@
     <ClInclude Include="CollisionMgr.h">
       <Filter>02. Design\05. CollisionMgr</Filter>
     </ClInclude>
-    <ClInclude Include="Stage1.h">
-      <Filter>03. Scene\01. Stage1</Filter>
-    </ClInclude>
-    <ClInclude Include="Stage2.h">
-      <Filter>03. Scene\02. Stage2</Filter>
-    </ClInclude>
-    <ClInclude Include="Stage3.h">
-      <Filter>03. Scene\03. Stage3</Filter>
-    </ClInclude>
     <ClInclude Include="Stage4.h">
       <Filter>03. Scene\04. Stage4</Filter>
-    </ClInclude>
-    <ClInclude Include="FishingRod.h">
-      <Filter>01. Obj\02. FishingRod</Filter>
-    </ClInclude>
-    <ClInclude Include="Fish.h">
-      <Filter>01. Obj\03. Fish</Filter>
-    </ClInclude>
-    <ClInclude Include="Roulette.h">
-      <Filter>01. Obj\04. Roulette</Filter>
-    </ClInclude>
-    <ClInclude Include="Arrow.h">
-      <Filter>01. Obj\04. Roulette\Arrow</Filter>
-    </ClInclude>
-    <ClInclude Include="Betting.h">
-      <Filter>01. Obj\05. Betting</Filter>
-    </ClInclude>
-    <ClInclude Include="Mole.h">
-      <Filter>01. Obj\06. MoleHunt</Filter>
-    </ClInclude>
-    <ClInclude Include="MolePlayer.h">
-      <Filter>01. Obj\06. MoleHunt</Filter>
-    </ClInclude>
-    <ClInclude Include="Tunnel.h">
-      <Filter>01. Obj\06. MoleHunt</Filter>
     </ClInclude>
     <ClInclude Include="KeyMgr2.h">
       <Filter>02. Design\06. KeyMgr2</Filter>
@@ -272,41 +212,8 @@
     <ClCompile Include="CollisionMgr.cpp">
       <Filter>02. Design\05. CollisionMgr</Filter>
     </ClCompile>
-    <ClCompile Include="Stage1.cpp">
-      <Filter>03. Scene\01. Stage1</Filter>
-    </ClCompile>
-    <ClCompile Include="Stage2.cpp">
-      <Filter>03. Scene\02. Stage2</Filter>
-    </ClCompile>
-    <ClCompile Include="Stage3.cpp">
-      <Filter>03. Scene\03. Stage3</Filter>
-    </ClCompile>
     <ClCompile Include="Stage4.cpp">
       <Filter>03. Scene\04. Stage4</Filter>
-    </ClCompile>
-    <ClCompile Include="FishingRod.cpp">
-      <Filter>01. Obj\02. FishingRod</Filter>
-    </ClCompile>
-    <ClCompile Include="Fish.cpp">
-      <Filter>01. Obj\03. Fish</Filter>
-    </ClCompile>
-    <ClCompile Include="Roulette.cpp">
-      <Filter>01. Obj\04. Roulette</Filter>
-    </ClCompile>
-    <ClCompile Include="Arrow.cpp">
-      <Filter>01. Obj\04. Roulette\Arrow</Filter>
-    </ClCompile>
-    <ClCompile Include="Betting.cpp">
-      <Filter>01. Obj\05. Betting</Filter>
-    </ClCompile>
-    <ClCompile Include="Mole.cpp">
-      <Filter>01. Obj\06. MoleHunt</Filter>
-    </ClCompile>
-    <ClCompile Include="MolePlayer.cpp">
-      <Filter>01. Obj\06. MoleHunt</Filter>
-    </ClCompile>
-    <ClCompile Include="Tunnel.cpp">
-      <Filter>01. Obj\06. MoleHunt</Filter>
     </ClCompile>
     <ClCompile Include="KeyMgr2.cpp">
       <Filter>02. Design\06. KeyMgr2</Filter>

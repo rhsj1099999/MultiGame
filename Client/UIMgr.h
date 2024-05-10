@@ -1,4 +1,6 @@
 #pragma once
+#include "Include.h"
+
 class CUIMgr
 {
 public:
@@ -21,6 +23,34 @@ public:
 	{
 		m_iMoney = 0;
 	}
+
+	struct UIRenderDesc
+	{
+		float m_fX = static_cast<float>(WINCX - 10);
+		float m_fY = static_cast<float>(WINCY / 2);
+		TCHAR szBuff[32] = {};
+	};
+
+	void SetUIText(HDC hDC, UIRenderDesc& Desc, SIZE& TextSize, const TCHAR* Buffer)
+	{
+		wsprintf(Desc.szBuff, Buffer);
+		GetTextExtentPoint32(hDC, Desc.szBuff, lstrlen(Desc.szBuff), &TextSize);
+		TextOut(hDC, Desc.m_fX - TextSize.cx, Desc.m_fY + (m_UIRenderStep * MESSAGEYDIFF), Desc.szBuff, lstrlen(Desc.szBuff));
+		m_UIRenderStep += 1.0f;
+	};
+
+
+	void RenderTutorial(HDC hDC);
+private:
+
+	void RenderSceneChange(HDC hDC, UIRenderDesc& Desc);
+	void RenderHowtoPlay(HDC hDC, UIRenderDesc& Desc);
+	UIRenderDesc m_tUIRenderDesc = {};
+	float m_UIRenderStep = 0.0f;
+
+
+
+
 public:
 	static CUIMgr* Get_Instance(void)
 	{
@@ -44,7 +74,6 @@ private:
 	bool m_bRoulletWaiting;
 	int m_iRoulletNumber;
 	int m_iRoulletMoney;
-	//두더지잡기에서 두더지카운트
 	int m_iMoleCnt;
 };
 

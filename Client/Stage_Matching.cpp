@@ -24,6 +24,17 @@ void Stage_Matching::Initialize()
 
 void Stage_Matching::Update()
 {
+    if (CKeyMgr::Get_Instance()->Key_Down(VK_ESCAPE))
+    {
+        if (m_bIsServerMode)
+        {
+            CServerManager::Get_Instance()->ClearDatas();
+            CServerManager::Get_Instance()->Release();
+            CServerManager::Get_Instance()->Destroy_Instance();
+            CServerManager::Get_Instance()->SetCanChat(false);
+        }
+        CSceneMgr::Get_Instance()->Scene_Change(SC_WORLDMAP);
+    }
 }
 
 void Stage_Matching::Late_Update()

@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "MainGame.h"
 #include "Player.h"
-#include "Monster.h"
 #include "SceneMgr.h"
 #include "KeyMgr.h"
 #include "UIMgr.h"
