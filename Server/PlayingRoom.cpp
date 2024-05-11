@@ -171,12 +171,12 @@ void CPlayingRoom::ExecutionMessage_InRoom(PREDATA::OrderType eType, void* pData
 			memcpy(Temp, &InsertedIndex, sizeof(int));
 			memcpy(&Temp[sizeof(int)], &pCasted->RoomSessionDesc.MyNumber, sizeof(int));
 
+			cout << "One Room's Game End / Find Answer" << endl;
+
 			for (int i = 0; i < MAXCLIENTS; ++i)
 			{
 				if (m_arrClients[i] == nullptr)
 					continue;
-
-				cout << "One Room's Game End / Find Answer" << endl;
 
 				MySend_Ptr(m_arrClients[i], Temp, sizeof(int) * 2, PREDATA::OrderType::GAMEEND);
 			}

@@ -57,7 +57,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,			// 메모리에 할당되는 실체, 즉 
 
 	/*static CMainGame MainGame;
 	MainGame.Initialize();*/
-
+    SystemParametersInfo(SPI_SETBEEP, FALSE, NULL, 0);
     CMainGame* pMainGame = CMainGame::Get_Instance();
     pMainGame->Initialize();
 

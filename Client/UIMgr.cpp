@@ -125,7 +125,7 @@ void CUIMgr::RenderHowtoPlay(HDC hDC, UIRenderDesc& Desc)
 		if (CServerManager::Get_Instance()->GetClientConnected() == true)
 			SetUIText(hDC, Desc, TextSize, L"Enter : Ã¤ÆÃ");
 
-		SetUIText(hDC, Desc, TextSize, L"Å¬¸¯ : Ä® ²Å±â");
+		SetUIText(hDC, Desc, TextSize, L"Å¬¸¯ : Ä® ²È±â");
 		break;
 	}
 }

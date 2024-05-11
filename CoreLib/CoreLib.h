@@ -48,7 +48,7 @@ using namespace std;
 #define SENDHEARTBEATCYCLE 2000
 #define MAXCONNETTIME 10000
 #define MAXTIMEOUT 3000
-#define MAXLATECOUNT 3
+#define MAXLATECOUNT 2
 
 enum class MSGType
 {

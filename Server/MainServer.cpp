@@ -305,6 +305,18 @@ void CMainServer::LiveCheck()
 
         if (bTempDead)
         {
+            {
+                CMyCQ::LockGuard TempWating(m_WatiingLock);
+                for (list<ClientSession*>::iterator Itr_W = m_liWatingClients.begin(); Itr_W != m_liWatingClients.end(); ++Itr_W)
+                {
+                    Itr_W = m_liWatingClients.erase(Itr_W);
+
+                    if (Itr_W == m_liWatingClients.end())
+                        break;
+                }
+            }
+
+
             CMyCQ::LockGuard Temp(m_ListLock);
 
             if ((*Itr)->PlayingRoomPtr != nullptr)
@@ -319,6 +331,7 @@ void CMainServer::LiveCheck()
             m_iCurrUser = static_cast<int>(m_liClientSockets.size());
 
             cout << "Client TimeOut. Users : " << m_iCurrUser << endl;
+            
 
             if (Itr == m_liClientSockets.end())
                 break;

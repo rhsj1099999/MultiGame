@@ -26,13 +26,15 @@ void Stage_Matching::Update()
 {
     if (CKeyMgr::Get_Instance()->Key_Down(VK_ESCAPE))
     {
-        if (m_bIsServerMode)
+        if (CServerManager::Get_Instance()->GetClientConnected() == true)
         {
             CServerManager::Get_Instance()->ClearDatas();
             CServerManager::Get_Instance()->Release();
             CServerManager::Get_Instance()->Destroy_Instance();
             CServerManager::Get_Instance()->SetCanChat(false);
         }
+
+
         CSceneMgr::Get_Instance()->Scene_Change(SC_WORLDMAP);
     }
 }
@@ -52,7 +54,7 @@ void Stage_Matching::Render(HDC hDC)
     }
     else
     {
-        wsprintf(szBuff, L"¸ÅÄªÁß... ÀÎ¿ø¼ö = %d / %d", CServerManager::Get_Instance()->GetServerUser(), MAXCLIENTS);
+        wsprintf(szBuff, L"¸ÅÄªÁß...");
         TextOut(hDC, WINCX / 2, WINCY / 2, szBuff, lstrlen(szBuff));
     }
 
