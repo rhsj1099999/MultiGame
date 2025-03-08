@@ -30,14 +30,13 @@ private:
 	void WorkerEntry_D(HANDLE hHandle);
 	void LiveCheck();
 	void MatchingRoom();
-	bool ExecuetionMessage(PREDATA::OrderType eType, void* Data, int DataSize);
+	bool ExecuetionMessage(PacketHeader::PacketType eType, void* Data, int DataSize);
 
 	void Lock_Queue(VFPtr pFArr[], int ArrSize, void* Args[]);
 	void Lock_Queue_Push(void* Ptr);
 	void Lock_Queue_ChangingRoom(void* Ptr);
 
 	void Lock_Session(VFPtr pFArr[], int ArrSize, void* Args[]);
-	void Lock_Session_ChangingState(void* Ptr);
 
 private:
 	static CMainServer* m_pInstance;

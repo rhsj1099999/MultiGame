@@ -47,11 +47,11 @@ void CMainServer::Release()
 
 
     {
-        CMyCQ::LockGuard Temp(m_ListLock);
+        LockGuard Temp(m_ListLock);
 
         for (ClientSession* pCS : m_liClientSockets)
         {
-            closesocket(pCS->soc);
+            closesocket(pCS->_socket);
 
             if (pCS != nullptr)
             {
@@ -224,37 +224,37 @@ void CMainServer::ConnectTry()
         return;
 
     ClientSession* pSession = new ClientSession;
-    pSession->soc = ClientSocket;
-    pSession->Overlapped_Send = {};
-    pSession->Overlapped_Recv = {};
-    pSession->eType = QUEUEWATING;
-    pSession->Respones = CTimer::GetInstance()->GetCurrTime();
-    pSession->LateCount = 0;
-    pSession->eClientState = ClientSession::ClientState::WAITING;
-    pSession->CQPtr = new CMyCQ(BUF384);
+    pSession->_socket = ClientSocket;
+    pSession->_overlapped_Send = {};
+    pSession->_overlapped_Recv = {};
+    pSession->_ioType = ClientSession::IOType::Read;
+    pSession->_responedTime = CTimer::GetInstance()->GetCurrTime();
+    pSession->_lateCount = 0;
+    pSession->_clientState = ClientSession::ClientState::WAITING;
+    pSession->_circularQueue = new CircularQueue(BUF384);
 
     CreateIoCompletionPort((HANDLE)ClientSocket, m_IOCPHandle, /*Key*/(ULONG_PTR)pSession, 0);
 
     {
-        CMyCQ::LockGuard TempListLock(m_ListLock);
+        LockGuard TempListLock(m_ListLock);
         m_liClientSockets.push_back(pSession);
         m_iCurrUser = static_cast<__int32>(m_liClientSockets.size());
 
-        CMyCQ::LockGuard TempQueueLock(m_WatiingLock);
+        LockGuard TempQueueLock(m_WatiingLock);
         m_liWatingClients.push_back(pSession);
     }
 
     cout << "Client Connected Users : " << m_iCurrUser << endl;
 
-    pSession->ByteToSent = pSession->CQPtr->GetSize();
-    pSession->wsaBuf_Send.buf = pSession->CQPtr->GetBuffer();
-    pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
+    pSession->_byteToSend = pSession->_circularQueue->GetSize();
+    pSession->_wsaBuffer_Send.buf = pSession->_circularQueue->GetBuffer();
+    pSession->_wsaBuffer_Send.len = pSession->_circularQueue->GetSize();
 
-    pSession->ByteTransferred = 0;
-    pSession->ByteToRead = sizeof(PREDATA);
-    pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
-    pSession->wsaBuf_Recv.len = sizeof(PREDATA);
-    pSession->ByteTransferred = 0;
+    pSession->_byteTransferred = 0;
+    pSession->_byteToRead = sizeof(PacketHeader);
+    pSession->_wsaBuffer_Recv.buf = pSession->_buffer;
+    pSession->_wsaBuffer_Recv.len = sizeof(PacketHeader);
+    pSession->_byteTransferred = 0;
 
     DWORD recvLen = 0;
     DWORD flag = 0;
@@ -264,10 +264,10 @@ void CMainServer::ConnectTry()
         if (pCS->PlayingRoomPtr != nullptr)
             continue;
 
-        MySend<int>(pCS, m_iCurrUser, PREDATA::OrderType::USERCOUNT);
+        MySend<int>(pCS, m_iCurrUser, PacketHeader::PacketType::USERCOUNT);
     }
     
-    WSARecv(pSession->soc, &pSession->wsaBuf_Recv, 1, &recvLen, &flag, &pSession->Overlapped_Recv, NULL);
+    WSARecv(pSession->_socket, &pSession->_wsaBuffer_Recv, 1, &recvLen, &flag, &pSession->_overlapped_Recv, NULL);
 }
 
 void CMainServer::TickWatingClients()
@@ -288,17 +288,17 @@ void CMainServer::LiveCheck()
     {
         bTempDead = false;
 
-        if ((*Itr)->soc == INVALID_SOCKET)
+        if ((*Itr)->_socket == INVALID_SOCKET)
         {
             bTempDead = true;
         }
         else
         {
-            if (abs(static_cast<int>((*Itr)->Respones - dwCurrTime)) > MAXTIMEOUT)
+            if (abs(static_cast<int>((*Itr)->_responedTime - dwCurrTime)) > MAXTIMEOUT)
             {
-                ++(*Itr)->LateCount;
+                ++(*Itr)->_lateCount;
 
-                if ((*Itr)->LateCount > MAXLATECOUNT)
+                if ((*Itr)->_lateCount > MAXLATECOUNT)
                     bTempDead = true;
             }
         }
@@ -306,7 +306,7 @@ void CMainServer::LiveCheck()
         if (bTempDead)
         {
             {
-                CMyCQ::LockGuard TempWating(m_WatiingLock);
+                LockGuard TempWating(m_WatiingLock);
                 for (list<ClientSession*>::iterator Itr_W = m_liWatingClients.begin(); Itr_W != m_liWatingClients.end(); ++Itr_W)
                 {
                     Itr_W = m_liWatingClients.erase(Itr_W);
@@ -317,12 +317,12 @@ void CMainServer::LiveCheck()
             }
 
 
-            CMyCQ::LockGuard Temp(m_ListLock);
+            LockGuard Temp(m_ListLock);
 
             if ((*Itr)->PlayingRoomPtr != nullptr)
                 static_cast<CPlayingRoom*>((*Itr)->PlayingRoomPtr)->ClientDead((*Itr));
 
-            closesocket((*Itr)->soc);
+            closesocket((*Itr)->_socket);
 
             delete (*Itr);
 
@@ -343,7 +343,7 @@ void CMainServer::MatchingRoom()
 {
     if (m_liWatingClients.size() >= MAXCLIENTS)
     {
-        CMyCQ::LockGuard Temp(m_WatiingLock);
+        LockGuard Temp(m_WatiingLock);
 
         CPlayingRoom* pNewRoom = new CPlayingRoom();
 
@@ -365,7 +365,7 @@ void CMainServer::MatchingRoom()
 
             Desc.MyNumber = i;
 
-            MySend<PlayingRoomSessionDesc>(pSession, Desc, PREDATA::OrderType::SCENECHANGE_TOPLAY);
+            MySend<PlayingRoomSessionDesc>(pSession, Desc, PacketHeader::PacketType::SCENECHANGE_TOPLAY);
 
 
             m_liWatingClients.erase(m_liWatingClients.begin());
@@ -376,25 +376,25 @@ void CMainServer::MatchingRoom()
     }
 }
 
-bool CMainServer::ExecuetionMessage(PREDATA::OrderType eType, void* pData, int DataSize)
+bool CMainServer::ExecuetionMessage(PacketHeader::PacketType eType, void* pData, int DataSize)
 {
     bool Ret = false;
 
     switch (eType)
     {
-    case PREDATA::OrderType::USERCOUNT:
+    case PacketHeader::PacketType::USERCOUNT:
         break;
-    case PREDATA::OrderType::MESSAGECHANGE:
+    case PacketHeader::PacketType::MESSAGECHANGE:
         break;
-    case PREDATA::OrderType::SCENECHANGE_TOPLAY:
+    case PacketHeader::PacketType::SCENECHANGE_TOPLAY:
         break;
-    case PREDATA::OrderType::SCENECHANGE_TOWORLD:
+    case PacketHeader::PacketType::SCENECHANGE_TOWORLD:
         break;
-    case PREDATA::OrderType::TURNON:
+    case PacketHeader::PacketType::TURNON:
         break;
-    case PREDATA::OrderType::TURNOFF:
+    case PacketHeader::PacketType::TURNOFF:
         break;
-    case PREDATA::OrderType::ROTATEANGLE:
+    case PacketHeader::PacketType::ROTATEANGLE:
     {
         char* pCharCasted = static_cast<char*>(pData);
 
@@ -408,7 +408,7 @@ bool CMainServer::ExecuetionMessage(PREDATA::OrderType eType, void* pData, int D
 
     }
         break;
-    case PREDATA::OrderType::PLAYERBLADEINSERTED:
+    case PacketHeader::PacketType::PLAYERBLADEINSERTED:
     {
         char* pCharCasted = static_cast<char*>(pData);
 
@@ -421,20 +421,20 @@ bool CMainServer::ExecuetionMessage(PREDATA::OrderType eType, void* pData, int D
         pRoom->ExecutionMessage_InRoom(eType, &Data, sizeof(PAK_BLADEINSERT));
     }
         break;
-    case PREDATA::OrderType::HEARTBEAT:
+    case PacketHeader::PacketType::HEARTBEAT:
         break;
-    case PREDATA::OrderType::CLIENTCHATSHOOT:
+    case PacketHeader::PacketType::CLIENTCHATSHOOT:
     {
         char* pCharCasted = static_cast<char*>(pData);
 
-        MSGType TempType = {};
+        PAK_ChattingMessage::MSGType TempType = {};
         PlayingRoomSessionDesc TempRoomDesc = {};
         char PacData[MAX_PATH] = {};
         int CharSize = DataSize - (sizeof(TempType) + sizeof(TempRoomDesc));
         
         memcpy(&TempRoomDesc, &pCharCasted[sizeof(TempType)], sizeof(TempRoomDesc));
-        memcpy(PacData, pCharCasted, sizeof(MSGType));
-        memcpy(&PacData[sizeof(MSGType)], &TempRoomDesc.MyNumber, sizeof(int));
+        memcpy(PacData, pCharCasted, sizeof(PAK_ChattingMessage::MSGType));
+        memcpy(&PacData[sizeof(PAK_ChattingMessage::MSGType)], &TempRoomDesc.MyNumber, sizeof(int));
         memcpy(&PacData[sizeof(TempType) + sizeof(int)], &pCharCasted[(sizeof(TempType) + sizeof(TempRoomDesc))], CharSize);
 
         CPlayingRoom* pRoom = static_cast<CPlayingRoom*>(TempRoomDesc.MyRoomPtr);
@@ -442,9 +442,9 @@ bool CMainServer::ExecuetionMessage(PREDATA::OrderType eType, void* pData, int D
         pRoom->ExecutionMessage_InRoom(eType, PacData, CharSize + sizeof(int) + sizeof(TempType));
     }
         break;
-    case PREDATA::OrderType::SERVERCHATSHOOT:
+    case PacketHeader::PacketType::SERVERCHATSHOOT:
         break;
-    case PREDATA::OrderType::END:
+    case PacketHeader::PacketType::END:
         break;
     default:
         break;
@@ -481,17 +481,11 @@ void CMainServer::Lock_Queue_ChangingRoom(void* Ptr)
     {
         for (int i = 0; i < 3; i++)
         {
-            m_liWatingClients.front()->eClientState = ClientSession::ClientState::PLAYING;
+            m_liWatingClients.front()->_clientState = ClientSession::ClientState::PLAYING;
             m_liWatingClients.erase(m_liWatingClients.begin());
         }
     }
 }
-
-void CMainServer::Lock_Session_ChangingState(void* Ptr)
-{
-}
-
-
 
 
 
@@ -510,37 +504,37 @@ void CMainServer::WorkerEntry_D(HANDLE hHandle)
             if (m_IOCPHandle == INVALID_HANDLE_VALUE)
                 return;
 
-            closesocket(pSession->soc);
+            closesocket(pSession->_socket);
 
             continue;
         }
 
-        if (pOverlap == &pSession->Overlapped_Send)
+        if (pOverlap == &pSession->_overlapped_Send)
         {
 #pragma region Send
 
-            pSession->Respones = CTimer::GetInstance()->GetCurrTime();
+            pSession->_responedTime = CTimer::GetInstance()->GetCurrTime();
 
-            CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
+            LockGuard Temp(pSession->_circularQueue->GetMutex());
 
-            pSession->CQPtr->Dequq_N(Bytes);
+            pSession->_circularQueue->Dequq_N(Bytes);
 
-            if (pSession->CQPtr->GetSize() == 0)
+            if (pSession->_circularQueue->GetSize() == 0)
                 continue; //메세지 없으면 자러갈꺼임
 
-            pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
-            pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
+            pSession->_wsaBuffer_Send.len = pSession->_circularQueue->GetSize();
+            pSession->_wsaBuffer_Send.buf = (char*)pSession->_circularQueue->GetFrontPtr();
 
             DWORD recvLen = 0;
             DWORD flag = 0;
 
-            if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
+            if (WSASend((pSession)->_socket, &pSession->_wsaBuffer_Send, 1, &recvLen, flag, &(pSession)->_overlapped_Send, NULL) == SOCKET_ERROR)
             {
                 int ERR = WSAGetLastError();
                 if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
                 {
                     //MSGBOX("WOD Server Send / Error_MySend. Not EWB, PENDING");
-                    closesocket(pSession->soc);
+                    closesocket(pSession->_socket);
                 }
             }
 #pragma endregion Send
@@ -548,73 +542,73 @@ void CMainServer::WorkerEntry_D(HANDLE hHandle)
         else
         {
 #pragma region Recv
-            pSession->ByteTransferred += Bytes;
-            pSession->ByteToRead -= Bytes;
+            pSession->_byteTransferred += Bytes;
+            pSession->_byteToRead -= Bytes;
 
-            if (pSession->ByteToRead < 0)
+            if (pSession->_byteToRead < 0)
             {
-                closesocket(pSession->soc);
+                closesocket(pSession->_socket);
                 continue;
             }
 
-            pSession->Respones = CTimer::GetInstance()->GetCurrTime();
+            pSession->_responedTime = CTimer::GetInstance()->GetCurrTime();
 
             while (true)
             {
-                if (pSession->bHeaderTransferred == false)
+                if (pSession->_isHeaderTransferred == false)
                 {
                     //헤더가 캐싱된적이 없다
-                    if (pSession->ByteTransferred < sizeof(PREDATA))
+                    if (pSession->_byteTransferred < sizeof(PacketHeader))
                     {
                         //근데 헤더를 완성할 수 없다
-                        pSession->wsaBuf_Recv.buf = &pSession->recvBuffer[pSession->ByteTransferred];
-                        pSession->wsaBuf_Recv.len = pSession->ByteToRead;
+                        pSession->_wsaBuffer_Recv.buf = &pSession->_buffer[pSession->_byteTransferred];
+                        pSession->_wsaBuffer_Recv.len = pSession->_byteToRead;
                         break;
                     }
                     else
                     {
                         //헤더를 캐싱할 수 있다.
-                        pSession->bHeaderTransferred = true;
-                        pSession->pLatestHead = *((PREDATA*)pSession->recvBuffer);
-                        pSession->ByteTransferred = 0;
-                        pSession->ByteToRead = pSession->pLatestHead.iSizeStandby;
-                        pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
-                        pSession->wsaBuf_Recv.len = pSession->pLatestHead.iSizeStandby;
+                        pSession->_isHeaderTransferred = true;
+                        pSession->_latestSendedHeader = *((PacketHeader*)pSession->_buffer);
+                        pSession->_byteTransferred = 0;
+                        pSession->_byteToRead = pSession->_latestSendedHeader._packetSize;
+                        pSession->_wsaBuffer_Recv.buf = pSession->_buffer;
+                        pSession->_wsaBuffer_Recv.len = pSession->_latestSendedHeader._packetSize;
                         break;
                     }
                 }
                 else
                 {
                     //헤더를 캐싱했다
-                    if (pSession->ByteTransferred < pSession->ByteToRead)
+                    if (pSession->_byteTransferred < pSession->_byteToRead)
                     {
                         //데이터를 다 못읽었다.
-                        pSession->wsaBuf_Recv.buf = &pSession->recvBuffer[pSession->ByteTransferred];
-                        pSession->wsaBuf_Recv.len = pSession->ByteToRead;
+                        pSession->_wsaBuffer_Recv.buf = &pSession->_buffer[pSession->_byteTransferred];
+                        pSession->_wsaBuffer_Recv.len = pSession->_byteToRead;
                         break;
                     }
                     else
                     {
                         //데이터를 다 읽었다.
-                        if (pSession->pLatestHead.eOrderType == PREDATA::OrderType::HEARTBEAT)
+                        if (pSession->_latestSendedHeader._packetType == PacketHeader::PacketType::HEARTBEAT)
                         {
-                            pSession->Respones = CTimer::GetInstance()->GetCurrTime();
+                            pSession->_responedTime = CTimer::GetInstance()->GetCurrTime();
                         }
                         else
                         {
                             ExecuetionMessage
                             (
-                                pSession->pLatestHead.eOrderType,
-                                pSession->recvBuffer,
-                                pSession->pLatestHead.iSizeStandby
+                                pSession->_latestSendedHeader._packetType,
+                                pSession->_buffer,
+                                pSession->_latestSendedHeader._packetSize
                             );
                         }
 
-                        pSession->bHeaderTransferred = false;
-                        pSession->ByteTransferred = 0;
-                        pSession->ByteToRead = sizeof(PREDATA);
-                        pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
-                        pSession->wsaBuf_Recv.len = sizeof(PREDATA);
+                        pSession->_isHeaderTransferred = false;
+                        pSession->_byteTransferred = 0;
+                        pSession->_byteToRead = sizeof(PacketHeader);
+                        pSession->_wsaBuffer_Recv.buf = pSession->_buffer;
+                        pSession->_wsaBuffer_Recv.len = sizeof(PacketHeader);
                         break;
                     }
                 }
@@ -622,18 +616,18 @@ void CMainServer::WorkerEntry_D(HANDLE hHandle)
             DWORD recvLen = 0;
             DWORD flag = 0;
 
-            if (pSession->ByteToRead <= 0)
+            if (pSession->_byteToRead <= 0)
             {
-                closesocket(pSession->soc);
+                closesocket(pSession->_socket);
                 continue;
             }
 
-            if (WSARecv(pSession->soc, &pSession->wsaBuf_Recv, 1, &recvLen, &flag, &pSession->Overlapped_Recv, NULL) == SOCKET_ERROR)
+            if (WSARecv(pSession->_socket, &pSession->_wsaBuffer_Recv, 1, &recvLen, &flag, &pSession->_overlapped_Recv, NULL) == SOCKET_ERROR)
             {
                 int ERR = WSAGetLastError();
                 if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
                 {
-                    closesocket(pSession->soc);
+                    closesocket(pSession->_socket);
                 }
             }
 #pragma endregion Recv

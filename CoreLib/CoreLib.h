@@ -50,42 +50,171 @@ using namespace std;
 #define MAXTIMEOUT 3000
 #define MAXLATECOUNT 2
 
-enum class MSGType
-{
-    Sys,
-    User,
-    END,
-};
 
-struct Session
+class LockGuard
 {
-    SOCKET soc = INVALID_SOCKET;
-    char recvqueue[BUFSIZE_100] = {};
-    __int32 recvSize = 0;
-    __int32 sendSize = 0;
-};
+    public:     LockGuard(mutex& mutex)
+        : _mutex(&mutex)
+    {
+        _mutex->lock();
+    }
+    public:     ~LockGuard()
+    {
+        _mutex->unlock();
+    }
 
-enum IO_TYPE
-{
-    READ,
-    WRITE,
-    ACCEPT,
-    CONNECT,
-    QUEUEWATING,
-    END,
-};
-
-struct OverlappedExtend
-{
-    WSAOVERLAPPED OverlappedEvent = {};
-    __int32 eType = 0;
+    private:    mutex* _mutex = nullptr;
 };
 
 
+#pragma region Circular Queue
 
-struct PREDATA
+class CircularQueue
 {
-    enum class OrderType
+    private:    char* _data;
+    private:    int _capacity;
+    private:    int _front;
+    private:    int _rear;
+    private:    int _size = 0;
+    private:    int _messageCount = 0;
+
+    private:    mutex _mutex;
+    public:     mutex& GetMutex() { return _mutex; }
+
+    public:     CircularQueue() = delete;
+    public:     CircularQueue(int ByteSize);
+    public:     ~CircularQueue();
+    public:     bool isEmpty();
+    public:     bool isFull();
+    public:     bool isFull_Add(int iSize);
+    public:     void enqueue_Int(int item);
+    public:     int dequeue_Int();
+    public:     void Dequeqe_Size(int memSize);
+    public:     void display();
+    public:     void* GetFrontPtr() { return &_data[_front]; }
+    public:     void* GetRearPtr() { return &_data[_rear]; }
+    public:     void* GetFrontOffsetPtr(int Offset);
+    public:     void Dequq_N(int iSize);
+    public:     char* GetBuffer();
+    public:     int GetSize();
+    public:     void Enqueqe_Ptr(void* Ptr, int memSize);
+
+      template<typename T>
+      void Enqueqe_Instance(T& Instance)
+      {
+          bool bMessageReady = false;
+
+          if (isFull() || isFull_Add(sizeof(T)))
+          {
+              return;
+          }
+          else if (isEmpty())
+          {
+              _front = _rear = 0;
+              bMessageReady = true;
+          }
+
+          int spaceToEnd = _capacity - _rear - 1;
+          if (_front > _rear && sizeof(T) > spaceToEnd)
+          {
+              memcpy(&_data + _rear + 1, &Instance, spaceToEnd);
+              memcpy(&_data, &Instance + spaceToEnd, sizeof(T) - spaceToEnd);
+          }
+          else
+          {
+              memcpy(&_data[_rear], &Instance, sizeof(T));
+          }
+
+          _rear = (_rear + sizeof(T)) % _capacity;
+          _size += sizeof(T);
+      }
+
+      template<typename T>
+      void Enqueqe_InstanceRVal(T&& Instance)
+      {
+          bool bMessageReady = false;
+          if (isFull() || isFull_Add(sizeof(T)))
+          {
+              return;
+          }
+          else if (isEmpty())
+          {
+              _front = _rear = 0;
+              bMessageReady = true;
+          }
+
+          int spaceToEnd = _capacity - _rear - 1;
+          if (_front > _rear && sizeof(T) > spaceToEnd)
+          {
+              memcpy(&_data + _rear + 1, &Instance, spaceToEnd);
+              memcpy(&_data, &Instance + spaceToEnd, sizeof(T) - spaceToEnd);
+          }
+          else
+          {
+              memcpy(&_data[_rear], &Instance, sizeof(T));
+          }
+
+
+          _rear = (_rear + sizeof(T)) % _capacity;
+          _size += sizeof(T);
+      }
+
+      template<typename T>
+      T* GetBufferT() { return (T*)_data; }
+
+      template<typename T>
+      void DisplayAll()
+      {
+          int iTypeSize = sizeof(T);
+
+          if (isEmpty())
+          {
+              cout << "Queue is empty.\n";
+              return;
+          }
+          else if (_front <= _rear)
+          {
+              T* ReadPtr = nullptr;
+
+              cout << "Queue: ";
+              for (int i = _front; i <= _rear / iTypeSize; i++)
+              {
+                  ReadPtr = (T*)(&_data[i * iTypeSize]);
+                  cout << *ReadPtr << " ";
+              }
+          }
+          else
+          {
+              T* ReadPtr = nullptr;
+
+              cout << "Queue: ";
+              for (int i = _front; i <= _rear / iTypeSize; i++)
+              {
+                  ReadPtr = (T*)(&_data[i * iTypeSize]);
+                  cout << *ReadPtr << " ";
+              }
+
+              for (int i = _front; i <= _rear / iTypeSize; i++)
+              {
+                  ReadPtr = (T*)(&_data[i * iTypeSize]);
+                  cout << *ReadPtr << " ";
+              }
+          }
+          cout << endl;
+      }
+};
+#pragma endregion Circular Queue
+
+
+
+
+
+
+
+
+class PacketHeader
+{
+    public:     enum class PacketType
     {
         USERCOUNT,
         MESSAGECHANGE,
@@ -108,186 +237,27 @@ struct PREDATA
         END, //ERROR
     };
 
-    PREDATA()
-    {}
-
-    PREDATA
+    public:     PacketHeader() {}
+    public:     PacketHeader
     (
         int Size,
-        PREDATA::OrderType eOrder
+        PacketHeader::PacketType eOrder
     )
-        : iSizeStandby(Size)
-        , eOrderType(eOrder)
+        : _packetSize(Size)
+        , _packetType(eOrder)
     {}
 
-
-
-    int iSizeStandby = 0; //가변길이라서 아무도 모름
-    OrderType eOrderType = OrderType::END;
+    public:     int _packetSize = 0;
+    public:     PacketType _packetType = PacketType::END;
 };
 
-class CMyCQ
-{
-public:
-    class LockGuard
-    {
-    public:
-        LockGuard(mutex& _m)
-            : m(&_m)
-        {
-            m->lock();
-        }
-        ~LockGuard()
-        {
-            m->unlock();
-        }
-    public:
-        void ForcedUnlock() { m->unlock(); }
-    private:
-        mutex* m = nullptr;
-    };
-
-private:
-    char* queue;
-    int capacity;
-    int front, rear;
-    int Size = 0;
-    int m_iMessageCount = 0;
-    mutex m;
-public:
-    CMyCQ() = delete;
-    CMyCQ(int ByteSize);
-    ~CMyCQ();
-
-    mutex& GetMutex() { return m; }
 
 
-    bool isEmpty();
-    bool isFull();
-    bool isFull_Add(int iSize);
-    void enqueue_Int(int item);
-    int dequeue_Int();
-    void Dequeqe_Size(int memSize);
-    void display();
-    void* GetFrontPtr();
-    void* GetRearPtr();
-    void* GetFrontOffsetPtr(int Offset);
-    void Dequq_N(int iSize);
-    char* GetBuffer();
-    int GetSize();
-
-    void Enqueqe_Ptr(void* Ptr, int memSize);
-
-    template<typename T>
-    void Enqueqe_Instance(T& Instance)
-    {
-        bool bMessageReady = false;
-
-        if (isFull() || isFull_Add(sizeof(T)))
-        {
-            return;
-        }
-        else if (isEmpty())
-        {
-            front = rear = 0;
-            bMessageReady = true;
-        }
-
-        int spaceToEnd = capacity - rear - 1;
-        if (front > rear && sizeof(T) > spaceToEnd)
-        {
-            memcpy(&queue + rear + 1, &Instance, spaceToEnd);
-            memcpy(&queue, &Instance + spaceToEnd, sizeof(T) - spaceToEnd);
-        }
-        else
-        {
-            memcpy(&queue[rear], &Instance, sizeof(T));
-        }
-
-        rear = (rear + sizeof(T)) % capacity;
-        Size += sizeof(T);
-    }
-
-    template<typename T>
-    void Enqueqe_InstanceRVal(T&& Instance)
-    {
-        bool bMessageReady = false;
-        if (isFull() || isFull_Add(sizeof(T)))
-        {
-            return;
-        }
-        else if (isEmpty())
-        {
-            front = rear = 0;
-            //패킷을 넣는 순간에 비어있었다면 자고있을 스레드 = 누구도 Send를 걸지 않았고, GQCS에 걸려있을것
-            bMessageReady = true;
-        }
-
-        int spaceToEnd = capacity - rear - 1;
-        if (front > rear && sizeof(T) > spaceToEnd)
-        {
-            memcpy(&queue + rear + 1, &Instance, spaceToEnd);
-            memcpy(&queue, &Instance + spaceToEnd, sizeof(T) - spaceToEnd);
-        }
-        else
-        {
-            memcpy(&queue[rear], &Instance, sizeof(T));
-        }
-
-
-        rear = (rear + sizeof(T)) % capacity;
-        Size += sizeof(T);
-    }
-
-    template<typename T>
-    T* GetBufferT() { return (T*)queue; }
-
-    template<typename T>
-    void DisplayAll()
-    {
-        int iTypeSize = sizeof(T);
-
-        if (isEmpty())
-        {
-            cout << "Queue is empty.\n";
-            return;
-        }
-        else if (front <= rear)
-        {
-            T* ReadPtr = nullptr;
-
-            cout << "Queue: ";
-            for (int i = front; i <= rear / iTypeSize; i++)
-            {
-                ReadPtr = (T*)(&queue[i * iTypeSize]);
-                cout << *ReadPtr << " ";
-            }
-        }
-        else
-        {
-            T* ReadPtr = nullptr;
-
-            cout << "Queue: ";
-            for (int i = front; i <= rear / iTypeSize; i++)
-            {
-                ReadPtr = (T*)(&queue[i * iTypeSize]);
-                cout << *ReadPtr << " ";
-            }
-
-            for (int i = front; i <= rear / iTypeSize; i++)
-            {
-                ReadPtr = (T*)(&queue[i * iTypeSize]);
-                cout << *ReadPtr << " ";
-            }
-        }
-        cout << endl;
-    }
-};
 
 struct PlayingRoomSessionDesc
 {
-    int MyNumber = -1;
-    void* MyRoomPtr = nullptr; //For Server;
+    public:     int MyNumber = -1;
+    public:     void* MyRoomPtr = nullptr;
 };
 
 struct PAK_ROTATEANGLE
@@ -308,27 +278,34 @@ struct PAK_INSERTFOLLOW
     int HoldIndex = 0;
 };
 
+class PAK_ChattingMessage
+{
+    public:     enum class MSGType
+    {
+        Sys,
+        User,
+        END,
+    };
+
+    public:     PAK_ChattingMessage(MSGType Type, wchar_t* Buffer, DWORD SendTime)
+        : _messageType(Type)
+        , _message(Buffer)
+        , _time(SendTime) {}
+
+    public:     MSGType _messageType = MSGType::END;
+    public:     wstring _message;
+    public:     DWORD _time;
+};
+
+
+
 struct ClientSession
 {
-    WSAOVERLAPPED Overlapped_Send;
-    WSAOVERLAPPED Overlapped_Recv;
-    SOCKET soc = INVALID_SOCKET;
-    WSABUF wsaBuf_Send = {};
-    WSABUF wsaBuf_Recv = {};
-    __int32 eType = 0;
-    char recvBuffer[BUFSIZE] = {};
-    __int32 recvSize = 0;
-    __int32 sendSize = 0;
-    __int32 ByteTransferred = 0;
-    __int32 ByteToSent = 0;
-    __int32 ByteToRead = 0;
-    CMyCQ* CQPtr = nullptr;
-    DWORD Respones = {};
-    int LateCount = 0;
-    bool bHeaderTransferred = false;
-    PREDATA pLatestHead;
-
-    void* PlayingRoomPtr = nullptr;
+    enum class IOType
+    {
+        Read,
+        Write,
+    };
 
     enum class ClientState
     {
@@ -341,19 +318,46 @@ struct ClientSession
         END,
     };
 
-    ClientState eClientState = ClientState::END;
-
     ~ClientSession()
     {
-        if (CQPtr != nullptr)
+        if (_circularQueue != nullptr)
         {
-            delete CQPtr;
-            CQPtr = nullptr;
+            delete _circularQueue;
+            _circularQueue = nullptr;
         }
     }
 
-    mutex WSAMutex_Send = {};
-    mutex WSAMutex_Recv = {};
+    ClientState _clientState = ClientState::END;
+    IOType _ioType = IOType::Read;
+
+
+    WSAOVERLAPPED _overlapped_Send;
+    WSAOVERLAPPED _overlapped_Recv;
+
+    SOCKET _socket = INVALID_SOCKET;
+
+    WSABUF _wsaBuffer_Send = {};
+    mutex _mutex_wsaBuffer_Send = {};
+    int _recvSize = 0;
+    int _byteToSend = 0;
+
+    WSABUF _wsaBuffer_Recv = {};
+    mutex _mutex_wsaBuffer_Recv = {};
+    int _sendSize = 0;
+    int _byteToRead = 0;
+
+    char _buffer[BUFSIZE] = {};
+
+    int _byteTransferred = 0;
+
+    CircularQueue* _circularQueue = nullptr;
+    PacketHeader _latestSendedHeader;
+    DWORD _responedTime = {};
+
+    int _lateCount = 0;
+    bool _isHeaderTransferred = false;
+
+    void* PlayingRoomPtr = nullptr;
 };
 
 
@@ -363,40 +367,40 @@ struct ClientSession
 
 
 template<typename T>
-bool MySend(ClientSession* pSession, T& Instance, PREDATA::OrderType Type)
+bool MySend(ClientSession* pSession, T& Instance, PacketHeader::PacketType Type)
 {
     bool Return = true;
 
-    if (pSession->soc == INVALID_SOCKET)
+    if (pSession->_socket == INVALID_SOCKET)
         return false;
 
-    CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
+    LockGuard Temp(pSession->_circularQueue->GetMutex());
 
     bool bTempMessageSend = false;
-    if (pSession->CQPtr->GetSize() == 0)
+    if (pSession->_circularQueue->GetSize() == 0)
         bTempMessageSend = true;
 
-    pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+    pSession->_circularQueue->Enqueqe_InstanceRVal<PacketHeader>(PacketHeader
     (
         sizeof(T),
         Type
     ));
-    pSession->CQPtr->Enqueqe_Instance<T>(Instance);
+    pSession->_circularQueue->Enqueqe_Instance<T>(Instance);
 
     if (bTempMessageSend == true)
     {
         DWORD recvLen = 0;
         DWORD flag = 0;
-        pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
-        pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
+        pSession->_wsaBuffer_Send.buf = (char*)pSession->_circularQueue->GetFrontPtr();
+        pSession->_wsaBuffer_Send.len = pSession->_circularQueue->GetSize();
 
-        if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
+        if (WSASend((pSession)->_socket, &pSession->_wsaBuffer_Send, 1, &recvLen, flag, &(pSession)->_overlapped_Send, NULL) == SOCKET_ERROR)
         {
             int ERR = WSAGetLastError();
             if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
             {
                 Return = false;
-                closesocket(pSession->soc);
+                closesocket(pSession->_socket);
             }
         }
     }
@@ -404,8 +408,6 @@ bool MySend(ClientSession* pSession, T& Instance, PREDATA::OrderType Type)
     return Return;
 }
 
-bool MySend_Ptr(ClientSession* pSession, void* Ptr, int Size, PREDATA::OrderType Type);
-
-
+bool MySend_Ptr(ClientSession* pSession, void* Ptr, int Size, PacketHeader::PacketType Type);
 
 void WorkerEntry(HANDLE hHandle, WSABUF* pOut);

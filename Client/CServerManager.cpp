@@ -55,14 +55,14 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
             return;
         }
 
-        if (pOverlap == &pSession->Overlapped_Recv)
+        if (pOverlap == &pSession->_overlapped_Recv)
         {
 #pragma region Recv
-            pSession->ByteTransferred += Bytes;
-            pSession->ByteToRead -= Bytes;
+            pSession->_byteTransferred += Bytes;
+            pSession->_byteToRead -= Bytes;
 
 
-            if (pSession->ByteToRead < 0)
+            if (pSession->_byteToRead < 0)
             {
                 ServerDamaged();
                 return;
@@ -71,46 +71,46 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
 
             while (true)
             {
-                if (pSession->bHeaderTransferred == false)
+                if (pSession->_isHeaderTransferred == false)
                 {
-                    if (pSession->ByteTransferred < sizeof(PREDATA))
+                    if (pSession->_byteTransferred < sizeof(PacketHeader))
                     {
-                        pSession->wsaBuf_Recv.buf = &pSession->recvBuffer[pSession->ByteTransferred];
-                        pSession->wsaBuf_Recv.len = pSession->ByteToRead;
+                        pSession->_wsaBuffer_Recv.buf = &pSession->_buffer[pSession->_byteTransferred];
+                        pSession->_wsaBuffer_Recv.len = pSession->_byteToRead;
                         break;
                     }
                     else
                     {
-                        pSession->bHeaderTransferred = true;
-                        pSession->pLatestHead = *((PREDATA*)pSession->recvBuffer);
-                        pSession->ByteTransferred = 0;
-                        pSession->ByteToRead = pSession->pLatestHead.iSizeStandby;
-                        pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
-                        pSession->wsaBuf_Recv.len = pSession->pLatestHead.iSizeStandby;
+                        pSession->_isHeaderTransferred = true;
+                        pSession->_latestSendedHeader = *((PacketHeader*)pSession->_buffer);
+                        pSession->_byteTransferred = 0;
+                        pSession->_byteToRead = pSession->_latestSendedHeader._packetSize;
+                        pSession->_wsaBuffer_Recv.buf = pSession->_buffer;
+                        pSession->_wsaBuffer_Recv.len = pSession->_latestSendedHeader._packetSize;
                         break;
                     }
                 }
                 else
                 {
-                    if (pSession->ByteTransferred < pSession->ByteToRead)
+                    if (pSession->_byteTransferred < pSession->_byteToRead)
                     {
-                        pSession->wsaBuf_Recv.buf = &pSession->recvBuffer[pSession->ByteTransferred];
-                        pSession->wsaBuf_Recv.len = pSession->ByteToRead;
+                        pSession->_wsaBuffer_Recv.buf = &pSession->_buffer[pSession->_byteTransferred];
+                        pSession->_wsaBuffer_Recv.len = pSession->_byteToRead;
                         break;
                     }
                     else
                     {
                         ExecuetionMessage
                         (
-                            pSession->pLatestHead.eOrderType,
-                            pSession->recvBuffer,
-                            pSession->pLatestHead.iSizeStandby
+                            pSession->_latestSendedHeader._packetType,
+                            pSession->_buffer,
+                            pSession->_latestSendedHeader._packetSize
                         );
-                        pSession->bHeaderTransferred = false;
-                        pSession->ByteTransferred = 0;
-                        pSession->ByteToRead = sizeof(PREDATA);
-                        pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
-                        pSession->wsaBuf_Recv.len = sizeof(PREDATA);
+                        pSession->_isHeaderTransferred = false;
+                        pSession->_byteTransferred = 0;
+                        pSession->_byteToRead = sizeof(PacketHeader);
+                        pSession->_wsaBuffer_Recv.buf = pSession->_buffer;
+                        pSession->_wsaBuffer_Recv.len = sizeof(PacketHeader);
                         break;
                     }
                 }
@@ -118,13 +118,13 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
             DWORD recvLen = 0;
             DWORD flag = 0;
 
-            if (pSession->ByteToRead <= 0)
+            if (pSession->_byteToRead <= 0)
             {
                 ServerDamaged();
                 return;
             }
 
-            if (WSARecv(pSession->soc, &pSession->wsaBuf_Recv, 1, &recvLen, &flag, &pSession->Overlapped_Recv, NULL) == SOCKET_ERROR)
+            if (WSARecv(pSession->_socket, &pSession->_wsaBuffer_Recv, 1, &recvLen, &flag, &pSession->_overlapped_Recv, NULL) == SOCKET_ERROR)
             {
                 int ERR = WSAGetLastError();
                 if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
@@ -138,20 +138,20 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
         else
         {
 #pragma region Send
-            CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
+            LockGuard Temp(pSession->_circularQueue->GetMutex());
 
-            pSession->CQPtr->Dequq_N(Bytes);
+            pSession->_circularQueue->Dequq_N(Bytes);
 
-            if (pSession->CQPtr->GetSize() == 0)
+            if (pSession->_circularQueue->GetSize() == 0)
                 continue; //메세지 없으면 자러갈꺼임
 
-            pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
-            pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
+            pSession->_wsaBuffer_Send.len = pSession->_circularQueue->GetSize();
+            pSession->_wsaBuffer_Send.buf = (char*)pSession->_circularQueue->GetFrontPtr();
 
             DWORD recvLen = 0;
             DWORD flag = 0;
 
-            if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
+            if (WSASend((pSession)->_socket, &pSession->_wsaBuffer_Send, 1, &recvLen, flag, &(pSession)->_overlapped_Send, NULL) == SOCKET_ERROR)
             {
                 int ERR = WSAGetLastError();
                 if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
@@ -307,19 +307,6 @@ void CServerManager::InitServer()
     }
 }
 
-//bool CServerManager::ChattingLengthCheck()
-//{
-//    return true;
-//}
-//
-//void CServerManager::ChattingShowOn()
-//{
-//    if (g_hWndEdit != NULL)
-//    {
-//        ShowWindow(g_hWndEdit, SW_SHOW);
-//    }
-//}
-
 void CServerManager::SetCanChat(bool bCanChat) 
 { 
     m_bCanChat = bCanChat;
@@ -373,13 +360,13 @@ void CServerManager::ChattingUpdate()
             if (Buffer[0] != '\0' && bIsOnlyBlank == false && m_bClientConnected == true)
             {
                 char TempPacketPtr[MAX_PATH] = {};
-                MSGType TempMsgType = MSGType::User;
+                PAK_ChattingMessage::MSGType TempMsgType = PAK_ChattingMessage::MSGType::User;
                 int Debug = sizeof(TempMsgType);
                 memcpy(TempPacketPtr, &TempMsgType, sizeof(TempMsgType));
                 Debug = sizeof(m_tRoomDesc);
                 memcpy(&TempPacketPtr[sizeof(TempMsgType)], &m_tRoomDesc, sizeof(m_tRoomDesc));
                 memcpy(&TempPacketPtr[sizeof(TempMsgType) + sizeof(m_tRoomDesc)], &Buffer, Byte);
-                MySend_Ptr(m_pSession, TempPacketPtr, Byte + sizeof(TempMsgType) + sizeof(m_tRoomDesc), PREDATA::OrderType::CLIENTCHATSHOOT);
+                MySend_Ptr(m_pSession, TempPacketPtr, Byte + sizeof(TempMsgType) + sizeof(m_tRoomDesc), PacketHeader::PacketType::CLIENTCHATSHOOT);
             }
 
             SetWindowText(g_hWndEdit, L"");
@@ -414,9 +401,9 @@ void CServerManager::ShowChattings(HDC hDC)
     int Index = 0;
 
     EnterCriticalSection_Chat();
-    for (deque<ChattingMessageDesc>::iterator Itr = m_Chattings.begin(); Itr != m_Chattings.end(); ++Itr)
+    for (deque<PAK_ChattingMessage>::iterator Itr = m_Chattings.begin(); Itr != m_Chattings.end(); ++Itr)
     {
-        if ((CurrTime - (*Itr).SendedTime) > MAXCHATTINGSHOW)
+        if ((CurrTime - (*Itr)._time) > MAXCHATTINGSHOW)
         {
             Itr = m_Chattings.erase(Itr);
 
@@ -425,20 +412,21 @@ void CServerManager::ShowChattings(HDC hDC)
         }
         ++Index;
 
-        switch ((*Itr).eType)
+        switch ((*Itr)._messageType)
         {
-        case MSGType::Sys:
+        case PAK_ChattingMessage::MSGType::Sys:
             SetTextColor(hDC, RGB(255, 0, 0));
             break;
-        case MSGType::User:
+        case PAK_ChattingMessage::MSGType::User:
             SetTextColor(hDC, RGB(0, 0, 0));
             break;
         default:
             break;
         }
 
-        TextOut(hDC, 15, (WINCY - 15) - (MESSAGEYDIFF * Index), (*Itr).Message.c_str(), (*Itr).Message.size());
+        TextOut(hDC, 15, (WINCY - 15) - (MESSAGEYDIFF * Index), (*Itr)._message.c_str(), (*Itr)._message.size());
     }
+
     LeaveCriticalSection_Chat();
 
     SetTextColor(hDC, RGB(0, 0, 0));
@@ -462,7 +450,7 @@ void CServerManager::SendHeartBeat()
     if (m_dwHeartBitCounter >= SENDHEARTBEATCYCLE)
     {
         bool bTempIMALIVE = true;
-        MySend<bool>(m_pSession, bTempIMALIVE, PREDATA::OrderType::HEARTBEAT);
+        MySend<bool>(m_pSession, bTempIMALIVE, PacketHeader::PacketType::HEARTBEAT);
     }
 }
 
@@ -498,25 +486,25 @@ void CServerManager::ConnectTry()
 
             ClientSession* pSession = new ClientSession;
             m_pSession = pSession;
-            pSession->soc = m_Socket;
-            pSession->Overlapped_Send = {};
-            pSession->Overlapped_Recv = {};
-            pSession->eType = READ;
+            pSession->_socket = m_Socket;
+            pSession->_overlapped_Send = {};
+            pSession->_overlapped_Recv = {};
+            pSession->_ioType = ClientSession::IOType::Read;
 
 
-            pSession->ByteTransferred = 0;
-            pSession->ByteToRead = sizeof(PREDATA);
-            pSession->wsaBuf_Recv.buf = pSession->recvBuffer;
-            pSession->wsaBuf_Recv.len = sizeof(PREDATA);
+            pSession->_byteTransferred = 0;
+            pSession->_byteToRead = sizeof(PacketHeader);
+            pSession->_wsaBuffer_Recv.buf = pSession->_buffer;
+            pSession->_wsaBuffer_Recv.len = sizeof(PacketHeader);
             CreateIoCompletionPort((HANDLE)m_Socket, m_IOCPHandle, /*Key*/(ULONG_PTR)pSession, 0); //등록할때는
 
-            pSession->CQPtr = new CMyCQ(BUF384);
+            pSession->_circularQueue = new CircularQueue(BUF384);
 
             DWORD recvLen = 0;
             DWORD flag = 0;
 
 
-            if (WSARecv(pSession->soc, &pSession->wsaBuf_Recv, 1, &recvLen, &flag, &pSession->Overlapped_Recv, NULL) == SOCKET_ERROR)
+            if (WSARecv(pSession->_socket, &pSession->_wsaBuffer_Recv, 1, &recvLen, &flag, &pSession->_overlapped_Recv, NULL) == SOCKET_ERROR)
             {
                 int ERR = WSAGetLastError();
                 if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
@@ -544,20 +532,20 @@ PlayingRoomSessionDesc* CServerManager::GetRoomDescPtr()
 
 }
 
-bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int DataSize)
+bool CServerManager::ExecuetionMessage(PacketHeader::PacketType eType, void* Data, int DataSize)
 {
     bool Ret = false;
 
 	switch (eType)
 	{
-	case PREDATA::OrderType::USERCOUNT:
+	case PacketHeader::PacketType::USERCOUNT:
 		memcpy(&m_iCurrUser, (int*)Data, sizeof(int));
 		break;
-    case PREDATA::OrderType::MESSAGECHANGE:
-        memcpy(&m_pSession->wsaBuf_Recv.len, (int*)Data, DataSize);
+    case PacketHeader::PacketType::MESSAGECHANGE:
+        memcpy(&m_pSession->_wsaBuffer_Recv.len, (int*)Data, DataSize);
         break;
 
-    case PREDATA::OrderType::SCENECHANGE_TOPLAY:
+    case PacketHeader::PacketType::SCENECHANGE_TOPLAY:
     {
         CSceneMgr::Get_Instance()->Scene_Change(SC_STAGE4, true);
         PlayingRoomSessionDesc* pCast = static_cast<PlayingRoomSessionDesc*>(Data);
@@ -570,19 +558,19 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
 
         break;
 
-    case PREDATA::OrderType::SCENECHANGE_TOWORLD:
+    case PacketHeader::PacketType::SCENECHANGE_TOWORLD:
         CSceneMgr::Get_Instance()->Scene_Change(SC_WORLDMAP);
         break;
 
-    case PREDATA::OrderType::TURNOFF:
+    case PacketHeader::PacketType::TURNOFF:
         m_bCanMove = false;
         break;
 
-    case PREDATA::OrderType::TURNON:
+    case PacketHeader::PacketType::TURNON:
         m_bCanMove = true;
         break;
 
-    case PREDATA::OrderType::TURNCHANGED:
+    case PacketHeader::PacketType::TURNCHANGED:
     {
         memcpy(&m_iCurrentPlayer, (int*)Data, sizeof(int));
         m_bCanMove = (m_tRoomDesc.MyNumber == m_iCurrentPlayer) ? true : false;
@@ -590,15 +578,15 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
 
         break;
 
-	case PREDATA::OrderType::END:
+	case PacketHeader::PacketType::END:
 		memcpy(&m_iCurrUser, (int*)Data, DataSize);
 		break;
 
-    case PREDATA::OrderType::FOLLOWANGLE:
+    case PacketHeader::PacketType::FOLLOWANGLE:
         memcpy(&m_fCurrAngle, (float*)Data, sizeof(float));
         break;
 
-    case PREDATA::OrderType::FOLLOWINDEX:
+    case PacketHeader::PacketType::FOLLOWINDEX:
     {
         PAK_INSERTFOLLOW TempData = {};
 
@@ -608,15 +596,15 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
     }
 
         break;
-    case PREDATA::OrderType::HEARTBEAT:
+    case PacketHeader::PacketType::HEARTBEAT:
         break;
-    case PREDATA::OrderType::CLIENTCHATSHOOT:
+    case PacketHeader::PacketType::CLIENTCHATSHOOT:
         break;
-    case PREDATA::OrderType::SERVERCHATSHOOT:
+    case PacketHeader::PacketType::SERVERCHATSHOOT:
     {
         char* Casted = static_cast<char*>(Data);
 
-        MSGType TempType = {};
+        PAK_ChattingMessage::MSGType TempType = {};
         int UserIndex = -1;
         wchar_t TempWCharBuffer[MAXCHATLEN_TOC + NULLSIZE] = {};
 
@@ -628,19 +616,19 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
 
         switch (TempType)
         {
-        case MSGType::Sys:
+        case PAK_ChattingMessage::MSGType::Sys:
             wsprintf(CompleteString, L"System : %s", TempWCharBuffer);
             break;
-        case MSGType::User:
+        case PAK_ChattingMessage::MSGType::User:
             wsprintf(CompleteString, L"Player [%d] : %s", UserIndex, TempWCharBuffer);
             break;
-        case MSGType::END:
+        case PAK_ChattingMessage::MSGType::END:
             break;
         default:
             break;
         }
         EnterCriticalSection_Chat();
-        m_Chattings.push_front(ChattingMessageDesc
+        m_Chattings.push_front(PAK_ChattingMessage
         (
             TempType,
             CompleteString,
@@ -650,7 +638,7 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
     }
         break;
 
-    case PREDATA::OrderType::GAMEEND:
+    case PacketHeader::PacketType::GAMEEND:
     {
         m_bGameIsEnd = true;
 
@@ -680,9 +668,9 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
         wchar_t TempVictoryMessage[MAX_PATH] = {};
         wsprintf(TempVictoryMessage, L"System : Player [ %d ] Win.", m_iWhoWins);
         EnterCriticalSection_Chat();
-        m_Chattings.push_front(ChattingMessageDesc
+        m_Chattings.push_front(PAK_ChattingMessage
         (
-            MSGType::Sys,
+            PAK_ChattingMessage::MSGType::Sys,
             TempVictoryMessage,
             CMainGame::Get_Instance()->GetCurrTime()
         ));
@@ -690,7 +678,7 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
 
     }
         break;
-    case PREDATA::OrderType::FORCEDGAMEEND:
+    case PacketHeader::PacketType::FORCEDGAMEEND:
     {
         m_bGameIsEnd = true;
         memcpy(&m_iWhoWins, Data, sizeof(int));
@@ -704,9 +692,9 @@ bool CServerManager::ExecuetionMessage(PREDATA::OrderType eType, void* Data, int
         wchar_t TempVictoryMessage[MAX_PATH] = {};
         wsprintf(TempVictoryMessage, L"System : Player [ %d ] Win.", m_iWhoWins);
         EnterCriticalSection_Chat();
-        m_Chattings.push_front(ChattingMessageDesc
+        m_Chattings.push_front(PAK_ChattingMessage
         (
-            MSGType::Sys,
+            PAK_ChattingMessage::MSGType::Sys,
             TempVictoryMessage,
             CMainGame::Get_Instance()->GetCurrTime()
         ));

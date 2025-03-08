@@ -84,7 +84,7 @@ int CCaseHoles::Update()
 
 					TempData.Index = m_iHoleIndex;
 
-					MySend<PAK_BLADEINSERT>(pSession, TempData, PREDATA::OrderType::PLAYERBLADEINSERTED);
+					MySend<PAK_BLADEINSERT>(pSession, TempData, PacketHeader::PacketType::PLAYERBLADEINSERTED);
 				}
 			}
 #pragma endregion MyTurn

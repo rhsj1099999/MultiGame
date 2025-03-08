@@ -1,37 +1,35 @@
 ﻿#include "CoreLib.h"
 
-CMyCQ::CMyCQ(int ByteSize)
+CircularQueue::CircularQueue(int Bytesize)
 {
-    capacity = ByteSize;
-    queue = new char[capacity];
-    memset(queue, 0xff, ByteSize);
-    front = rear = -1;
+    _capacity = Bytesize;
+    _data = new char[_capacity];
+    memset(_data, 0xff, Bytesize);
+    _front = _rear = -1;
 }
 
-CMyCQ::~CMyCQ()
+CircularQueue::~CircularQueue()
 {
-    delete[] queue;
+    delete[] _data;
 }
 
-bool CMyCQ::isEmpty()
-{
-    
-    return front == -1;
-}
-
-bool CMyCQ::isFull()
+bool CircularQueue::isEmpty()
 {
     
-    return Size == capacity;
+    return _front == -1;
 }
 
-bool CMyCQ::isFull_Add(int iSize)
+bool CircularQueue::isFull()
 {
-    
-    return (Size + iSize) >= capacity;
+    return _size == _capacity;
 }
 
-void CMyCQ::enqueue_Int(int item)
+bool CircularQueue::isFull_Add(int size)
+{
+    return (_size + size) >= _capacity;
+}
+
+void CircularQueue::enqueue_Int(int item)
 {
     
     if (isFull() || isFull_Add(sizeof(int)))
@@ -40,215 +38,208 @@ void CMyCQ::enqueue_Int(int item)
     }
     else if (isEmpty())
     {
-        front = rear = 0;
+        _front = _rear = 0;
     }
 
-    int spaceToEnd = capacity - rear - 1;
-    if (front > rear && sizeof(int) > spaceToEnd)
+    int spaceToEnd = _capacity - _rear - 1;
+    if (_front > _rear && sizeof(int) > spaceToEnd)
     {
-        memcpy(&queue + rear + 1, &item, spaceToEnd);
-        memcpy(&queue, &item + spaceToEnd, sizeof(int) - spaceToEnd);
+        memcpy(&_data + _rear + 1, &item, spaceToEnd);
+        memcpy(&_data, &item + spaceToEnd, sizeof(int) - spaceToEnd);
     }
     else
     {
-        memcpy(&queue[rear], &item, sizeof(int));
+        memcpy(&_data[_rear], &item, sizeof(int));
     }
 
-
-
-    rear = (rear + sizeof(int)) % capacity;
-    Size += sizeof(int);
+    _rear = (_rear + sizeof(int)) % _capacity;
+    _size += sizeof(int);
 }
 
-void CMyCQ::Enqueqe_Ptr(void* Ptr, int memSize)
+void CircularQueue::Enqueqe_Ptr(void* Ptr, int memsize)
 {
     bool bMessageReady = false;
 
-    if (isFull() || isFull_Add(sizeof(memSize)))
+    if (isFull() || isFull_Add(sizeof(memsize)))
     {
         return;
     }
     else if (isEmpty())
     {
-        front = rear = 0;
+        _front = _rear = 0;
         bMessageReady = true;
     }
 
-    int spaceToEnd = capacity - rear - 1;
-    if (front > rear && memSize > spaceToEnd)
+    int spaceToEnd = _capacity - _rear - 1;
+    if (_front > _rear && memsize > spaceToEnd)
     {
-        memcpy(&queue + rear + 1, Ptr, spaceToEnd);
-        memcpy(&queue, (char*)Ptr + spaceToEnd, memSize - spaceToEnd);
+        memcpy(&_data + _rear + 1, Ptr, spaceToEnd);
+        memcpy(&_data, (char*)Ptr + spaceToEnd, memsize - spaceToEnd);
     }
     else
     {
-        memcpy(&queue[rear], Ptr, memSize);
+        memcpy(&_data[_rear], Ptr, memsize);
     }
     
-    rear = (rear + memSize) % capacity;
-    Size += memSize;
+    _rear = (_rear + memsize) % _capacity;
+    _size += memsize;
 }
 
-int CMyCQ::dequeue_Int()
+int CircularQueue::dequeue_Int()
 {
     
     if (isEmpty())
     {
         return -1;
     }
-    else if (front == rear)
+    else if (_front == _rear)
     {
-        int item = queue[front];
-        front = rear = -1;
+        int item = _data[_front];
+        _front = _rear = -1;
         return item;
     }
     else
     {
-        int item = queue[front];
-        front = (front + 1) % capacity;
+        int item = _data[_front];
+        _front = (_front + 1) % _capacity;
         return item;
     }
 }
 
-void CMyCQ::Dequeqe_Size(int memSize)
+void CircularQueue::Dequeqe_Size(int memsize)
 {
-    
     if (isEmpty())
     {
         return;
     }
-    else if (front == rear)
+    else if (_front == _rear)
     {
-        front = rear = -1;
+        _front = _rear = -1;
         return;
     }
     else
     {
-        front = (front + memSize) % capacity;
+        _front = (_front + memsize) % _capacity;
         return;
     }
 }
 
-void CMyCQ::display()
+void CircularQueue::display()
 {
-    
     if (isEmpty())
     {
         cout << "Queue is empty.\n";
         return;
     }
-    else if (front <= rear)
+    else if (_front <= _rear)
     {
         cout << "Queue: ";
-        for (int i = front; i <= rear; i++)
+        for (int i = _front; i <= _rear; i++)
         {
-            cout << queue[i] << " ";
+            cout << _data[i] << " ";
         }
     }
     else
     {
         cout << "Queue: ";
-        for (int i = front; i < capacity; i++)
+        for (int i = _front; i < _capacity; i++)
         {
-            cout << queue[i] << " ";
+            cout << _data[i] << " ";
         }
 
-        for (int i = 0; i <= rear; i++)
+        for (int i = 0; i <= _rear; i++)
         {
-            cout << queue[i] << " ";
+            cout << _data[i] << " ";
         }
     }
     cout << endl;
 }
 
-void* CMyCQ::GetFrontPtr() {  return &queue[front]; }
 
-void* CMyCQ::GetRearPtr() {  return &queue[rear]; }
 
-void* CMyCQ::GetFrontOffsetPtr(int Offset)
+void* CircularQueue::GetFrontOffsetPtr(int Offset)
 {
     
-    int EndPoint = front + Offset;
+    int EndPoint = _front + Offset;
 
-    if (Size - 1 < Offset)
+    if (_size - 1 < Offset)
     {
         return nullptr;
     }
 
-    if (front > rear)
+    if (_front > _rear)
     {
-        EndPoint %= capacity;
-        return &queue[EndPoint];
+        EndPoint %= _capacity;
+        return &_data[EndPoint];
     }
     else
     {
-        return &queue[EndPoint];
+        return &_data[EndPoint];
     }
 }
 
-void CMyCQ::Dequq_N(int iSize)
+void CircularQueue::Dequq_N(int size)
 {
-    
     if (isEmpty())
     {
         return;
     }
-    if (Size <= 0 || iSize > Size)
+    if (_size <= 0 || size > _size)
     {
         return;
     }
-    front = (front + iSize) % capacity;
-    Size -= iSize;
+    _front = (_front + size) % _capacity;
+    _size -= size;
 
-    if (front == rear)
+    if (_front == _rear)
     {
-        front = rear = -1;
-        memset(queue, 0xff, capacity);
+        _front = _rear = -1;
+        memset(_data, 0xff, _capacity);
         return;
     }
 }
 
-char* CMyCQ::GetBuffer() { return queue; }
+char* CircularQueue::GetBuffer() { return _data; }
 
-int CMyCQ::GetSize()
+int CircularQueue::GetSize()
 {
-    return Size;
+    return _size;
 }
 
-bool MySend_Ptr(ClientSession* pSession, void* Ptr, int Size, PREDATA::OrderType Type)
+bool MySend_Ptr(ClientSession* pSession, void* Ptr, int size, PacketHeader::PacketType Type)
 {
     bool Return = true;
 
-    if (pSession->soc == INVALID_SOCKET)
+    if (pSession->_socket == INVALID_SOCKET)
         return false;
 
-    CMyCQ::LockGuard Temp(pSession->CQPtr->GetMutex());
+    LockGuard Temp(pSession->_circularQueue->GetMutex());
 
     bool bTempMessageSend = false;
-    if (pSession->CQPtr->GetSize() == 0)
+    if (pSession->_circularQueue->GetSize() == 0)
         bTempMessageSend = true;
 
-    pSession->CQPtr->Enqueqe_InstanceRVal<PREDATA>(PREDATA
+    pSession->_circularQueue->Enqueqe_InstanceRVal<PacketHeader>(PacketHeader
     (
-        Size,
+        size,
         Type
     ));
-    pSession->CQPtr->Enqueqe_Ptr(Ptr, Size);
+    pSession->_circularQueue->Enqueqe_Ptr(Ptr, size);
 
     if (bTempMessageSend == true)
     {
         DWORD recvLen = 0;
         DWORD flag = 0;
-        pSession->wsaBuf_Send.buf = (char*)pSession->CQPtr->GetFrontPtr();
-        pSession->wsaBuf_Send.len = pSession->CQPtr->GetSize();
+        pSession->_wsaBuffer_Send.buf = (char*)pSession->_circularQueue->GetFrontPtr();
+        pSession->_wsaBuffer_Send.len = pSession->_circularQueue->GetSize();
 
-        if (WSASend((pSession)->soc, &pSession->wsaBuf_Send, 1, &recvLen, flag, &(pSession)->Overlapped_Send, NULL) == SOCKET_ERROR)
+        if (WSASend((pSession)->_socket, &pSession->_wsaBuffer_Send, 1, &recvLen, flag, &(pSession)->_overlapped_Send, NULL) == SOCKET_ERROR)
         {
             int ERR = WSAGetLastError();
             if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
             {
                 Return = false;
-                closesocket(pSession->soc);
+                closesocket(pSession->_socket);
             }
         }
     }
@@ -270,44 +261,28 @@ void WorkerEntry(HANDLE hHandle, WSABUF* pOut)
 
             if (bRet == FALSE || Bytes == 0)
             {
-                //Close Socket
                 continue;
             }
 
-            switch (pSession->eType)
+            WSABUF DataBuf;
+            DataBuf.buf = pSession->_buffer;
+            DataBuf.len = BUFSIZE;
+
+            DWORD recvLen = 0;
+            DWORD flag = 0;
+
+            switch (pSession->_ioType)
             {
-            case READ:
-            {
-                WSABUF DataBuf;
-                DataBuf.buf = pSession->recvBuffer;
-                DataBuf.len = BUFSIZE;
+                case ClientSession::IOType::Read:
+                    WSARecv(pSession->_socket, &DataBuf, 1, &recvLen, &flag, (LPOVERLAPPED)&pOverlap, NULL);
+                    break;
 
-                DWORD recvLen = 0;
-                DWORD flag = 0;
-                WSARecv(pSession->soc, &DataBuf, 1, &recvLen, &flag, (LPOVERLAPPED)&pOverlap, NULL);
-            }
-            break;
+                case ClientSession::IOType::Write:
+                    WSASend(pSession->_socket, &DataBuf, 1, &recvLen, flag, (LPOVERLAPPED)&pOverlap, nullptr);
+                    break;
 
-            case WRITE:
-            {
-            }
-            break;
-
-            case QUEUEWATING:
-            {
-                WSABUF DataBuf;
-                DataBuf.buf = pSession->recvBuffer;
-                DataBuf.len = BUFSIZE;
-
-                DWORD recvLen = 0;
-                DWORD flag = 0;
-                WSASend(pSession->soc, &DataBuf, 1, &recvLen, flag, (LPOVERLAPPED)&pOverlap, nullptr);
-            }
-            break;
-
-
-            default:
-                break;
+                default:
+                    break;
             }
         }
     }

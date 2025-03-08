@@ -18,7 +18,7 @@ void CPlayingRoom::Init(ClientSession* pThreeSession[], list<ClientSession*>& pR
 	for (int i = 0; i < MAXCLIENTS; ++i)
 	{
 		m_arrClients[i] = pThreeSession[i];
-		MySend<int>(m_arrClients[i], m_iPlayingOrder, PREDATA::OrderType::TURNCHANGED);
+		MySend<int>(m_arrClients[i], m_iPlayingOrder, PacketHeader::PacketType::TURNCHANGED);
 	}
 }
 
@@ -66,7 +66,7 @@ void CPlayingRoom::ClientDead(ClientSession* pSession)
 
 	char Buffer_Char[MAX_PATH] = {};
 
-	MSGType TempType = MSGType::Sys;
+	PAK_ChattingMessage::MSGType TempType = PAK_ChattingMessage::MSGType::Sys;
 	memcpy(Buffer_Char, &TempType, sizeof(TempType));
 	memcpy(&Buffer_Char[sizeof(TempType)], &DisconnectedPlayer, sizeof(DisconnectedPlayer));
 
@@ -90,13 +90,13 @@ void CPlayingRoom::ClientDead(ClientSession* pSession)
 				continue;
 
 			//접속종료 메세지
-			MySend_Ptr(m_arrClients[i], Buffer_Char, sizeof(TempType) + sizeof(DisconnectedPlayer) + CharByte, PREDATA::OrderType::SERVERCHATSHOOT);
+			MySend_Ptr(m_arrClients[i], Buffer_Char, sizeof(TempType) + sizeof(DisconnectedPlayer) + CharByte, PacketHeader::PacketType::SERVERCHATSHOOT);
 
 			if (bTempGameEndSig)
 			{
 				//우승-게임종료 메세지
 				cout << "One Room's Game End / OnePlayer" << endl;
-				MySend<int>(m_arrClients[i], m_iPlayingOrder, PREDATA::OrderType::FORCEDGAMEEND);
+				MySend<int>(m_arrClients[i], m_iPlayingOrder, PacketHeader::PacketType::FORCEDGAMEEND);
 			}
 		}
 	}
@@ -108,35 +108,35 @@ void CPlayingRoom::ClientDead(ClientSession* pSession)
 				continue;
 
 			//접속종료 메세지
-			MySend_Ptr(m_arrClients[i], Buffer_Char, sizeof(TempType) + sizeof(DisconnectedPlayer) + CharByte, PREDATA::OrderType::SERVERCHATSHOOT);
+			MySend_Ptr(m_arrClients[i], Buffer_Char, sizeof(TempType) + sizeof(DisconnectedPlayer) + CharByte, PacketHeader::PacketType::SERVERCHATSHOOT);
 
 			//턴변경 메세지
 			if (m_bIsGameEnd == false)
-				MySend<int>(m_arrClients[i], m_iPlayingOrder, PREDATA::OrderType::TURNCHANGED);
+				MySend<int>(m_arrClients[i], m_iPlayingOrder, PacketHeader::PacketType::TURNCHANGED);
 		}
 	}
 }
 
-void CPlayingRoom::ExecutionMessage_InRoom(PREDATA::OrderType eType, void* pData, int DataSize)
+void CPlayingRoom::ExecutionMessage_InRoom(PacketHeader::PacketType eType, void* pData, int DataSize)
 {
 	switch (eType)
 	{
-	case PREDATA::OrderType::USERCOUNT:
+	case PacketHeader::PacketType::USERCOUNT:
 		break;
-	case PREDATA::OrderType::MESSAGECHANGE:
+	case PacketHeader::PacketType::MESSAGECHANGE:
 		break;
-	case PREDATA::OrderType::SCENECHANGE_TOPLAY:
+	case PacketHeader::PacketType::SCENECHANGE_TOPLAY:
 		break;
-	case PREDATA::OrderType::SCENECHANGE_TOWORLD:
+	case PacketHeader::PacketType::SCENECHANGE_TOWORLD:
 		break;
-	case PREDATA::OrderType::TURNOFF:
+	case PacketHeader::PacketType::TURNOFF:
 		break;
-	case PREDATA::OrderType::TURNON:
+	case PacketHeader::PacketType::TURNON:
 		break;
-	case PREDATA::OrderType::TURNCHANGED:
+	case PacketHeader::PacketType::TURNCHANGED:
 		break;
-	case PREDATA::OrderType::ROTATEANGLE:
-	{
+	case PacketHeader::PacketType::ROTATEANGLE:
+		{
 		PAK_ROTATEANGLE* pCasted = static_cast<PAK_ROTATEANGLE*>(pData);
 
 		float fAngle = pCasted->Angle;
@@ -148,17 +148,16 @@ void CPlayingRoom::ExecutionMessage_InRoom(PREDATA::OrderType eType, void* pData
 
 			if (m_arrClients[i] == nullptr)
 				continue;
-			MySend<float>(m_arrClients[i], fAngle, PREDATA::OrderType::FOLLOWANGLE);
+			MySend<float>(m_arrClients[i], fAngle, PacketHeader::PacketType::FOLLOWANGLE);
 		}
 	}
-
 		break;
-	case PREDATA::OrderType::FOLLOWANGLE:
+	case PacketHeader::PacketType::FOLLOWANGLE:
 		break;
-	case PREDATA::OrderType::PLAYERBLADEINSERTTRY:
+	case PacketHeader::PacketType::PLAYERBLADEINSERTTRY:
 		break;
-	case PREDATA::OrderType::PLAYERBLADEINSERTED:
-	{
+	case PacketHeader::PacketType::PLAYERBLADEINSERTED:
+		{
 		PAK_BLADEINSERT* pCasted = static_cast<PAK_BLADEINSERT*>(pData);
 
 		int InsertedIndex = pCasted->Index;
@@ -178,7 +177,7 @@ void CPlayingRoom::ExecutionMessage_InRoom(PREDATA::OrderType eType, void* pData
 				if (m_arrClients[i] == nullptr)
 					continue;
 
-				MySend_Ptr(m_arrClients[i], Temp, sizeof(int) * 2, PREDATA::OrderType::GAMEEND);
+				MySend_Ptr(m_arrClients[i], Temp, sizeof(int) * 2, PacketHeader::PacketType::GAMEEND);
 			}
 		}
 		else
@@ -205,33 +204,31 @@ void CPlayingRoom::ExecutionMessage_InRoom(PREDATA::OrderType eType, void* pData
 					continue;
 
 				if (i != pCasted->RoomSessionDesc.MyNumber)
-					MySend<PAK_INSERTFOLLOW>(m_arrClients[i], TempFollowData, PREDATA::OrderType::FOLLOWINDEX);
+					MySend<PAK_INSERTFOLLOW>(m_arrClients[i], TempFollowData, PacketHeader::PacketType::FOLLOWINDEX);
 
-				MySend<int>(m_arrClients[i], NextTurn, PREDATA::OrderType::TURNCHANGED);
+				MySend<int>(m_arrClients[i], NextTurn, PacketHeader::PacketType::TURNCHANGED);
 			}
 		}
 	}
 		break;
-
-	case PREDATA::OrderType::FOLLOWINDEX:
+	case PacketHeader::PacketType::FOLLOWINDEX:
 		break;
-	case PREDATA::OrderType::HEARTBEAT:
+	case PacketHeader::PacketType::HEARTBEAT:
 		break;
-	case PREDATA::OrderType::SERVERCHATSHOOT:
+	case PacketHeader::PacketType::SERVERCHATSHOOT:
 		break;
-	case PREDATA::OrderType::CLIENTCHATSHOOT:
+	case PacketHeader::PacketType::CLIENTCHATSHOOT:
 		for (int i = 0; i < MAXCLIENTS; i++)
 		{
 			if (m_arrClients[i] == nullptr)
 				continue;
 
-			MySend_Ptr(m_arrClients[i], pData, DataSize, PREDATA::OrderType::SERVERCHATSHOOT);
+			MySend_Ptr(m_arrClients[i], pData, DataSize, PacketHeader::PacketType::SERVERCHATSHOOT);
 		}
-
 		break;
-	case PREDATA::OrderType::SOMECLIENTDEAD:
+	case PacketHeader::PacketType::SOMECLIENTDEAD:
 		break;
-	case PREDATA::OrderType::END:
+	case PacketHeader::PacketType::END:
 		break;
 	default:
 		break;

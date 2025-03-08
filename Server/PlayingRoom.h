@@ -11,7 +11,7 @@ public:
 	ClientSession** GetClients() { return m_arrClients; }
 
 	void ClientDead(ClientSession* pSession);
-	void ExecutionMessage_InRoom(PREDATA::OrderType eType, void* pData, int DataSize);
+	void ExecutionMessage_InRoom(PacketHeader::PacketType eType, void* pData, int DataSize);
 
 private:
 	float m_fRotated = 0.0f;

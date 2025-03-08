@@ -2,18 +2,6 @@
 #include "Include.h"
 #include "Obj.h"
 
-struct ChattingMessageDesc
-{
-	ChattingMessageDesc(MSGType Type, wchar_t* Buffer, DWORD SendTime)
-		: eType(Type)
-		, Message(Buffer)
-		, SendedTime(SendTime) {}
-
-	MSGType eType = MSGType::END;
-	wstring Message;
-	DWORD SendedTime;
-};
-
 class CCaseHoles;
 class CPirateHead;
 class CServerManager
@@ -99,7 +87,7 @@ public:
 	void ClearDatas();
 private:
 	void WorkerEntry_D(HANDLE hHandle, char* pOut, int size = 100);
-	bool ExecuetionMessage(PREDATA::OrderType eType, void* Data, int DataSize);
+	bool ExecuetionMessage(PacketHeader::PacketType eType, void* Data, int DataSize);
 	PlayingRoomSessionDesc m_tRoomDesc = {};
 
 private:
@@ -126,7 +114,7 @@ private:
 	int m_iCurrentPlayer = -1;
 	bool m_bIsChatReady = false;
 
-	deque<ChattingMessageDesc> m_Chattings;
+	deque<PAK_ChattingMessage> m_Chattings;
 	CRITICAL_SECTION m_ChatQueueCS = {};
 
 	bool m_bGameIsEnd = false;

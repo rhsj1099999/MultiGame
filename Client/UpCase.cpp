@@ -151,7 +151,7 @@ int CUpCase::Update()
 
 					TempData.Angle = m_fAngle;
 
-					MySend<PAK_ROTATEANGLE>(pSession, TempData, PREDATA::OrderType::ROTATEANGLE);
+					MySend<PAK_ROTATEANGLE>(pSession, TempData, PacketHeader::PacketType::ROTATEANGLE);
 				}
 				
 				CServerManager::Get_Instance()->SetCurrentAngle(m_fAngle);
