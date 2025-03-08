@@ -1,20 +1,24 @@
 #pragma once
-class CTimer
+class CTimer : public CBase
 {
-public:
-	CTimer();
-	~CTimer();
-	static CTimer* GetInstance();
-	static void Destroy_Instance();
-	void Init();
-	void Tick();
-	DWORD GetDeltaTime();
-	DWORD GetCurrTime();
+	public:		static CTimer* GetInstance();
+	public:		static void Destroy_Instance();
+	private:	static CTimer* _instance;
 
-private:
-	DWORD m_dwOldTime = {};
-	DWORD m_dwCurrTime = {};
-	DWORD m_dwDeltaTime = {};
-	static CTimer* m_pInstance;
+	public:		CTimer();
+	public:		~CTimer();
+
+	public:		void Release()override {};
+
+	public:		void Init();
+	public:		void Tick();
+
+	public:		DWORD GetDeltaTime();
+	public:		DWORD GetCurrTime();
+
+
+	private:	DWORD _oldTime = {};
+	private:	DWORD _currTime = {};
+	private:	DWORD _deltaTime = {};
 };
 

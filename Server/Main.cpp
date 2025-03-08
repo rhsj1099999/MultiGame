@@ -5,25 +5,15 @@
 #include <csignal> // for signal
 
 
-CMainInstance* pInstance_Main = nullptr;
-
-int* Temp = new int;
+CMainInstance* _mainInstance = nullptr;
 
 void DestroyMainInstance(int signal)
 {
     std::cout << "Received signal: " << signal << std::endl;
 
-    pInstance_Main->SetCanTick(false);
+    _mainInstance->Stop();
 
-    while (true)
-    {
-        if (pInstance_Main->GetIsRunning() == false)
-        {
-            break;
-        }
-    }
-
-    delete pInstance_Main;
+    delete _mainInstance;
 }
 
 int main()
@@ -40,13 +30,13 @@ int main()
 
     signal(SIGABRT, DestroyMainInstance);
     
-    pInstance_Main = CMainInstance::GetInstance();
+    _mainInstance = CMainInstance::GetInstance();
 
-    pInstance_Main->Init();
+    _mainInstance->Init();
 
     while (true)
     {
-        pInstance_Main->Tick();
+        _mainInstance->Tick();
     }
 
     return 0;

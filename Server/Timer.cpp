@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "Timer.h"
 
-CTimer* CTimer::m_pInstance = nullptr;
+CTimer* CTimer::_instance = nullptr;
 
 CTimer::CTimer()
 {
@@ -13,41 +13,41 @@ CTimer::~CTimer()
 
 CTimer* CTimer::GetInstance()
 {
-	if (m_pInstance == nullptr)
+	if (_instance == nullptr)
 	{
-		m_pInstance = new CTimer();
+		_instance = new CTimer();
 	}
-	return m_pInstance;
+	return _instance;
 }
 
 void CTimer::Destroy_Instance()
 {
-	if (m_pInstance)
+	if (_instance)
 	{
-		delete m_pInstance;
-		m_pInstance = nullptr;
+		delete _instance;
+		_instance = nullptr;
 	}
 }
 
 void CTimer::Init()
 {
-	m_dwOldTime = GetTickCount();
-	m_dwCurrTime = GetTickCount();
+	_oldTime = GetTickCount();
+	_currTime = GetTickCount();
 }
 
 void CTimer::Tick()
 {
-	m_dwCurrTime = GetTickCount();
-	m_dwDeltaTime = m_dwCurrTime - m_dwOldTime;
-	m_dwOldTime = m_dwCurrTime;
+	_currTime = GetTickCount();
+	_deltaTime = _currTime - _oldTime;
+	_oldTime = _currTime;
 }
 
 DWORD CTimer::GetDeltaTime()
 {
-	return m_dwDeltaTime;
+	return _deltaTime;
 }
 
 DWORD CTimer::GetCurrTime()
 {
-	return m_dwCurrTime;
+	return _currTime;
 }

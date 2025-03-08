@@ -12,20 +12,21 @@ CPlayingRoom::~CPlayingRoom()
 
 void CPlayingRoom::Init(ClientSession* pThreeSession[], list<ClientSession*>& pReturnList)
 {
-	m_iAnswerHole = rand() % (HOLE_HORIZON * HOLE_VERTICAL);
-	m_iPlayingOrder = rand() % MAXCLIENTS;
+	_answerHoleIndex = rand() % (HOLE_HORIZON * HOLE_VERTICAL);
+	_currUserOrder = rand() % MAXCLIENTS;
+	_currUsers = 0;
 
 	for (int i = 0; i < MAXCLIENTS; ++i)
 	{
-		m_arrClients[i] = pThreeSession[i];
-		MySend<int>(m_arrClients[i], m_iPlayingOrder, PacketHeader::PacketType::TURNCHANGED);
+		_roomMembers[i] = pThreeSession[i];
+
+		if (pThreeSession[i] != nullptr)
+		{
+			_currUsers++;
+		}
+
+		MySend<int>(_roomMembers[i], _currUserOrder, PacketHeader::PacketType::TURNCHANGED);
 	}
-}
-
-void CPlayingRoom::Tick()
-{
-	
-
 }
 
 void CPlayingRoom::ClientDead(ClientSession* pSession)
@@ -34,28 +35,28 @@ void CPlayingRoom::ClientDead(ClientSession* pSession)
 
 	for (int i = 0; i < MAXCLIENTS; i++)
 	{
-		if (m_arrClients[i] == pSession)
+		if (_roomMembers[i] == pSession)
 		{
 			DisconnectedPlayer = i;
 
-			m_arrClients[i] = nullptr;
+			_roomMembers[i] = nullptr;
 
-			--m_iCurrPlayer;
+			--_currUsers;
 			
-			if (m_iCurrPlayer <= 0)
+			if (_currUsers <= 0)
 			{
 				CMainServer::GetInstance()->DeleteRoom(this);
 				cout << "Room Destroy" << endl;
 				return;
 			}
 
-			if (m_iPlayingOrder == i)
+			if (_currUserOrder == i)
 			{
 				while (true)
 				{
-					m_iPlayingOrder = (m_iPlayingOrder + 1) % MAXCLIENTS;
+					_currUserOrder = (_currUserOrder + 1) % MAXCLIENTS;
 
-					if (m_arrClients[m_iPlayingOrder] != nullptr)
+					if (_roomMembers[_currUserOrder] != nullptr)
 						break;
 				}
 			}
@@ -77,26 +78,32 @@ void CPlayingRoom::ClientDead(ClientSession* pSession)
 	
 	bool bTempGameEndSig = false;
 
-	if (m_bIsGameEnd == false)
+	if (_isGameEnd == false)
 	{
 		bTempGameEndSig = true;
 	}
 
-	if (m_iCurrPlayer == 1)
+	if (_currUsers == 1)
 	{
 		for (int i = 0; i < MAXCLIENTS; i++)
 		{
-			if (m_arrClients[i] == nullptr)
+			if (_roomMembers[i] == nullptr)
 				continue;
 
 			//접속종료 메세지
-			MySend_Ptr(m_arrClients[i], Buffer_Char, sizeof(TempType) + sizeof(DisconnectedPlayer) + CharByte, PacketHeader::PacketType::SERVERCHATSHOOT);
+			MySend_Ptr
+			(
+				_roomMembers[i],
+				Buffer_Char,
+				sizeof(TempType) + sizeof(DisconnectedPlayer) + CharByte,
+				PacketHeader::PacketType::SERVERCHATSHOOT
+			);
 
 			if (bTempGameEndSig)
 			{
 				//우승-게임종료 메세지
 				cout << "One Room's Game End / OnePlayer" << endl;
-				MySend<int>(m_arrClients[i], m_iPlayingOrder, PacketHeader::PacketType::FORCEDGAMEEND);
+				MySend<int>(_roomMembers[i], _currUserOrder, PacketHeader::PacketType::FORCEDGAMEEND);
 			}
 		}
 	}
@@ -104,15 +111,15 @@ void CPlayingRoom::ClientDead(ClientSession* pSession)
 	{
 		for (int i = 0; i < MAXCLIENTS; i++)
 		{
-			if (m_arrClients[i] == nullptr)
+			if (_roomMembers[i] == nullptr)
 				continue;
 
 			//접속종료 메세지
-			MySend_Ptr(m_arrClients[i], Buffer_Char, sizeof(TempType) + sizeof(DisconnectedPlayer) + CharByte, PacketHeader::PacketType::SERVERCHATSHOOT);
+			MySend_Ptr(_roomMembers[i], Buffer_Char, sizeof(TempType) + sizeof(DisconnectedPlayer) + CharByte, PacketHeader::PacketType::SERVERCHATSHOOT);
 
 			//턴변경 메세지
-			if (m_bIsGameEnd == false)
-				MySend<int>(m_arrClients[i], m_iPlayingOrder, PacketHeader::PacketType::TURNCHANGED);
+			if (_isGameEnd == false)
+				MySend<int>(_roomMembers[i], _currUserOrder, PacketHeader::PacketType::TURNCHANGED);
 		}
 	}
 }
@@ -121,20 +128,6 @@ void CPlayingRoom::ExecutionMessage_InRoom(PacketHeader::PacketType eType, void*
 {
 	switch (eType)
 	{
-	case PacketHeader::PacketType::USERCOUNT:
-		break;
-	case PacketHeader::PacketType::MESSAGECHANGE:
-		break;
-	case PacketHeader::PacketType::SCENECHANGE_TOPLAY:
-		break;
-	case PacketHeader::PacketType::SCENECHANGE_TOWORLD:
-		break;
-	case PacketHeader::PacketType::TURNOFF:
-		break;
-	case PacketHeader::PacketType::TURNON:
-		break;
-	case PacketHeader::PacketType::TURNCHANGED:
-		break;
 	case PacketHeader::PacketType::ROTATEANGLE:
 		{
 		PAK_ROTATEANGLE* pCasted = static_cast<PAK_ROTATEANGLE*>(pData);
@@ -146,15 +139,11 @@ void CPlayingRoom::ExecutionMessage_InRoom(PacketHeader::PacketType eType, void*
 			if (i == pCasted->RoomSessionDesc.MyNumber)
 				continue;
 
-			if (m_arrClients[i] == nullptr)
+			if (_roomMembers[i] == nullptr)
 				continue;
-			MySend<float>(m_arrClients[i], fAngle, PacketHeader::PacketType::FOLLOWANGLE);
+			MySend<float>(_roomMembers[i], fAngle, PacketHeader::PacketType::FOLLOWANGLE);
 		}
 	}
-		break;
-	case PacketHeader::PacketType::FOLLOWANGLE:
-		break;
-	case PacketHeader::PacketType::PLAYERBLADEINSERTTRY:
 		break;
 	case PacketHeader::PacketType::PLAYERBLADEINSERTED:
 		{
@@ -162,9 +151,9 @@ void CPlayingRoom::ExecutionMessage_InRoom(PacketHeader::PacketType eType, void*
 
 		int InsertedIndex = pCasted->Index;
 
-		if (InsertedIndex == m_iAnswerHole)
+		if (InsertedIndex == _answerHoleIndex)
 		{
-			m_bIsGameEnd = true;
+			_isGameEnd = true;
 
 			char Temp[8] = {};
 			memcpy(Temp, &InsertedIndex, sizeof(int));
@@ -174,10 +163,10 @@ void CPlayingRoom::ExecutionMessage_InRoom(PacketHeader::PacketType eType, void*
 
 			for (int i = 0; i < MAXCLIENTS; ++i)
 			{
-				if (m_arrClients[i] == nullptr)
+				if (_roomMembers[i] == nullptr)
 					continue;
 
-				MySend_Ptr(m_arrClients[i], Temp, sizeof(int) * 2, PacketHeader::PacketType::GAMEEND);
+				MySend_Ptr(_roomMembers[i], Temp, sizeof(int) * 2, PacketHeader::PacketType::GAMEEND);
 			}
 		}
 		else
@@ -188,11 +177,11 @@ void CPlayingRoom::ExecutionMessage_InRoom(PacketHeader::PacketType eType, void*
 			{
 				NextTurn = (NextTurn + 1) % MAXCLIENTS;
 
-				if (m_arrClients[NextTurn] != nullptr)
+				if (_roomMembers[NextTurn] != nullptr)
 					break;
 			}
 
-			m_iPlayingOrder = NextTurn;
+			_currUserOrder = NextTurn;
 
 			PAK_INSERTFOLLOW TempFollowData = {};
 			TempFollowData.HoldIndex = InsertedIndex;
@@ -200,37 +189,31 @@ void CPlayingRoom::ExecutionMessage_InRoom(PacketHeader::PacketType eType, void*
 
 			for (int i = 0; i < MAXCLIENTS; ++i)
 			{
-				if (m_arrClients[i] == nullptr)
+				if (_roomMembers[i] == nullptr)
 					continue;
 
 				if (i != pCasted->RoomSessionDesc.MyNumber)
-					MySend<PAK_INSERTFOLLOW>(m_arrClients[i], TempFollowData, PacketHeader::PacketType::FOLLOWINDEX);
+					MySend<PAK_INSERTFOLLOW>(_roomMembers[i], TempFollowData, PacketHeader::PacketType::FOLLOWINDEX);
 
-				MySend<int>(m_arrClients[i], NextTurn, PacketHeader::PacketType::TURNCHANGED);
+				MySend<int>(_roomMembers[i], NextTurn, PacketHeader::PacketType::TURNCHANGED);
 			}
 		}
 	}
 		break;
-	case PacketHeader::PacketType::FOLLOWINDEX:
-		break;
-	case PacketHeader::PacketType::HEARTBEAT:
-		break;
-	case PacketHeader::PacketType::SERVERCHATSHOOT:
-		break;
 	case PacketHeader::PacketType::CLIENTCHATSHOOT:
 		for (int i = 0; i < MAXCLIENTS; i++)
 		{
-			if (m_arrClients[i] == nullptr)
+			if (_roomMembers[i] == nullptr)
 				continue;
 
-			MySend_Ptr(m_arrClients[i], pData, DataSize, PacketHeader::PacketType::SERVERCHATSHOOT);
+			MySend_Ptr(_roomMembers[i], pData, DataSize, PacketHeader::PacketType::SERVERCHATSHOOT);
 		}
 		break;
-	case PacketHeader::PacketType::SOMECLIENTDEAD:
-		break;
-	case PacketHeader::PacketType::END:
-		break;
+
 	default:
+		{
+			SR1_MSGBOX("패킷이 잘못왔네요?");
+		}
 		break;
 	}
 }

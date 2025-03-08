@@ -4,55 +4,40 @@
 #include "Timer.h"
 #include "MainServer.h"
 
-CMainInstance* CMainInstance::m_pInstance = nullptr;
+CMainInstance* CMainInstance::_instance = nullptr;
+
+CMainInstance* CMainInstance::GetInstance()
+{
+	if (_instance == nullptr)
+	{
+		_instance = new CMainInstance();
+	}
+	return _instance;
+}
 
 CMainInstance::~CMainInstance()
 {
-	if (m_pTimer != nullptr)
-	{
-		m_pTimer->Destroy_Instance();
-		m_pTimer = nullptr;
-	}
-		
+	_timer->Destroy_Instance();
+	_timer = nullptr;
 
-	m_pMainServer->Release();
+	_server->Release();
 	
-	if (m_pMainServer != nullptr)
-	{
-		m_pMainServer->Destroy_Instance();
-		m_pMainServer = nullptr;
-	}
-		
+	_server->Destroy_Instance();
+	_server = nullptr;
 }
 
 
 void CMainInstance::Init()
 {
-	if (m_pTimer == nullptr)
-		m_pTimer = CTimer::GetInstance();
-	m_pTimer->Init();
+	_timer = CTimer::GetInstance();
+	_timer->Init();
 
-	if (m_pMainServer == nullptr)
-		m_pMainServer = CMainServer::GetInstance();
-	m_pMainServer->Init();
+	_server = CMainServer::GetInstance();
+	_server->Init();
 }
 
 void CMainInstance::Tick()
 {
-	m_bIsRunning = true;
-
-	if (m_bIsTick == true)
-	{
-		if (m_pTimer != nullptr)
-		{
-			m_pTimer->Tick();
-		}
-
-		if (m_pMainServer != nullptr)
-		{
-			m_pMainServer->Tick();
-		}
-	}
-
-	m_bIsRunning = false;
+	_timer->Tick();
+	_server->Tick();
 }

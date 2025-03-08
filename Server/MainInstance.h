@@ -2,30 +2,20 @@
 
 class CTimer;
 class CMainServer;
-
 class CMainInstance
 {
-public:
-	static CMainInstance* GetInstance()
-	{
-		if (m_pInstance == nullptr)
-		{
-			m_pInstance = new CMainInstance();
-		}
-		return m_pInstance;
-	}
-	~CMainInstance();
-	bool GetIsRunning() { return m_bIsRunning; }
-	void SetCanTick(bool Tick) { m_bIsTick = Tick; }
-	void Init();
-	void Tick();
+	public:		static CMainInstance* GetInstance();
+	private:	static CMainInstance* _instance;
+	public:		~CMainInstance();
 
-private:
-	static CMainInstance* m_pInstance;
+	public:		void Stop() { _activated = false; }
+	public:		void Init();
+	public:		void Tick();
 
-	CTimer* m_pTimer = nullptr;
-	CMainServer* m_pMainServer = nullptr;
-	bool m_bIsTick = true;
-	bool m_bIsRunning = false;
+
+
+	private:	CTimer* _timer = nullptr;
+	private:	CMainServer* _server = nullptr;
+	private:	bool _activated = true;
 };
 

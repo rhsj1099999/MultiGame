@@ -16,8 +16,11 @@
     <Filter Include="Design\00. MainInstance">
       <UniqueIdentifier>{74e46699-2a82-4c56-a20c-0a4d9537530a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Design\99. Base">
-      <UniqueIdentifier>{f42b8a84-4d53-4fc8-abaf-98eb0b63f000}</UniqueIdentifier>
+    <Filter Include="Design\03. PlaingRoom_PirateHeadShoot">
+      <UniqueIdentifier>{52d33948-4a8f-4887-8687-59244991989a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Design\99. Main_CPP">
+      <UniqueIdentifier>{03e02c6d-49b8-495e-bd33-d6c3a4a3bb44}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -27,17 +30,18 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Pre</Filter>
     </ClCompile>
-    <ClCompile Include="Main.cpp" />
     <ClCompile Include="Timer.cpp">
       <Filter>Design\02. Timer</Filter>
     </ClCompile>
     <ClCompile Include="MainInstance.cpp">
       <Filter>Design\00. MainInstance</Filter>
     </ClCompile>
-    <ClCompile Include="Base.cpp">
-      <Filter>Design\99. Base</Filter>
+    <ClCompile Include="PlayingRoom.cpp">
+      <Filter>Design\03. PlaingRoom_PirateHeadShoot</Filter>
     </ClCompile>
-    <ClCompile Include="PlayingRoom.cpp" />
+    <ClCompile Include="Main.cpp">
+      <Filter>Design\99. Main_CPP</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MainServer.h">
@@ -52,9 +56,8 @@
     <ClInclude Include="MainInstance.h">
       <Filter>Design\00. MainInstance</Filter>
     </ClInclude>
-    <ClInclude Include="Base.h">
-      <Filter>Design\99. Base</Filter>
+    <ClInclude Include="PlayingRoom.h">
+      <Filter>Design\03. PlaingRoom_PirateHeadShoot</Filter>
     </ClInclude>
-    <ClInclude Include="PlayingRoom.h" />
   </ItemGroup>
 </Project>

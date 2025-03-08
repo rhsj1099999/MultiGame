@@ -1,13 +1,24 @@
 #pragma once
+#include <string>
+#include <iostream>
+#include <thread>
+#include <atomic>
+#include <vector>
+#include <list>
+#include <mutex>
+#include <map>
+#include <queue>
+
+
 #include <WinSock2.h>
 #include <mswsock.h>
 #include <ws2tcpip.h>
 #include <mutex>
 #include <iostream>
-#pragma comment(lib, "ws2_32.lib")
+#include <fstream>
 
-#define MSGBOX(MESSAGE) MessageBox(0, TEXT(MESSAGE), TEXT("Fail_"), MB_OK)
-#define MSGBOX2(MESSAGE) MessageBox(0, MESSAGE, TEXT("Fail_"), MB_OK)
+
+#pragma comment(lib, "ws2_32.lib")
 
 using namespace std;
 
@@ -49,6 +60,10 @@ using namespace std;
 #define MAXCONNETTIME 10000
 #define MAXTIMEOUT 3000
 #define MAXLATECOUNT 2
+
+
+#define SR1_MSGBOX(MESSAGE) MessageBox(0, TEXT(MESSAGE), TEXT("Fail_"), MB_OK)
+#define SR1_MSGBOX2(MESSAGE) MessageBox(0, MESSAGE, TEXT("Fail_"), MB_OK)
 
 
 class LockGuard
@@ -205,9 +220,9 @@ class CircularQueue
 };
 #pragma endregion Circular Queue
 
+bool ReadStringFromFile(string* directory, string* ret);
 
-
-
+bool WSAGetLastError_MessageReport(int ret);
 
 
 
@@ -411,3 +426,12 @@ bool MySend(ClientSession* pSession, T& Instance, PacketHeader::PacketType Type)
 bool MySend_Ptr(ClientSession* pSession, void* Ptr, int Size, PacketHeader::PacketType Type);
 
 void WorkerEntry(HANDLE hHandle, WSABUF* pOut);
+
+
+
+
+
+class CBase
+{
+    public:     virtual void Release() = 0;
+};

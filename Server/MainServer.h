@@ -1,70 +1,56 @@
 #pragma once
 
 
-
-
-
-
 class CPlayingRoom;
 
-
-class CMainServer
+class CMainServer : public CBase
 {
-	typedef void (CMainServer::*VFPtr)(void*);
-public:
-	static CMainServer* GetInstance();
-	static void Destroy_Instance();
-	CMainServer();
-	~CMainServer();
+	typedef void (CMainServer::* VFPtr)(void*);
 
-	void Release();
+	public:		static CMainServer* GetInstance();
+	public:		static void Destroy_Instance();
+	private:	static CMainServer* _instance;
 
-	void Init();
-	void Tick();
+	public:		void Release()override;
+	public:		CMainServer();
+	public:		~CMainServer();
 
-	void DeleteRoom(CPlayingRoom* RoomPtr);
+	public:		void DeleteRoom(CPlayingRoom* RoomPtr);
+	public:		void Init();
+	public:		void Tick();
 
-private:
-	void ConnectTry();
-	void TickWatingClients();
-	void WorkerEntry_D(HANDLE hHandle);
-	void LiveCheck();
-	void MatchingRoom();
-	bool ExecuetionMessage(PacketHeader::PacketType eType, void* Data, int DataSize);
 
-	void Lock_Queue(VFPtr pFArr[], int ArrSize, void* Args[]);
-	void Lock_Queue_Push(void* Ptr);
-	void Lock_Queue_ChangingRoom(void* Ptr);
+	private:	void ConnectTry();
+	private:	void WorkerEntry_D(HANDLE hHandle);
+	private:	void LiveCheck();
+	private:	void MatchingRoom();
+	private:	bool ExecuetionMessage(PacketHeader::PacketType eType, void* Data, int DataSize);
 
-	void Lock_Session(VFPtr pFArr[], int ArrSize, void* Args[]);
+	private:	void Lock_Queue(VFPtr pFArr[], int ArrSize, void* Args[]);
+	private:	void Lock_Queue_Push(void* Ptr);
+	private:	void Lock_Queue_ChangingRoom(void* Ptr);
+	private:	void Lock_Session(VFPtr pFArr[], int ArrSize, void* Args[]);
 
-private:
-	static CMainServer* m_pInstance;
-	/*---------------
-	Handle, Core, Etc
-	---------------*/
-	WSADATA m_wsa = {};
-	SOCKET m_Socket = {};
-	SOCKADDR_IN m_ServerAddr = {};
-	vector<thread> m_vecWorkerThreads;
-	ClientSession* m_pSession = nullptr;
-	HANDLE m_IOCPHandle = INVALID_HANDLE_VALUE;
+	
+	private:	WSADATA _wsaData = {};
+	private:	SOCKET _serverSocket = {};
+	private:	SOCKADDR_IN _serverAddress = {};
+	private:	vector<thread> _workerThreads;
+	private:	ClientSession* _serverSession = nullptr;
+	private:	HANDLE _iocpHandle = INVALID_HANDLE_VALUE;
 
 
 
-	/*---------------
-		Data
-	---------------*/
-	bool m_bClientConnected = false;
-	int m_iCurrUser = 0;
+	private:	int _currUserCount = 0;
 
-	list<ClientSession*> m_liClientSockets;
-	mutex m_ListLock = {};
+	private:	list<ClientSession*> _currClientSessions;
+	private:	mutex _mutex_CurrClientSession = {};
 
-	list<ClientSession*> m_liWatingClients;
-	mutex m_WatiingLock = {};
+	private:	list<ClientSession*> _currWaitingClientSessions;
+	private:	mutex _mutex_CurrWaitingClientSession = {};
 
-	list<CPlayingRoom*> m_liPlayingRooms;
+	private:	list<CPlayingRoom*> _currPlayingRooms;
+	private:	mutex _mutex_CurrPlayingRooms = {};
 
 };
 

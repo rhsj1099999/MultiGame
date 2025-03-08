@@ -509,7 +509,7 @@ void CServerManager::ConnectTry()
                 int ERR = WSAGetLastError();
                 if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
                 {
-                    MSGBOX("WOD Client RECV / Error_MySend. Not EWB, PENDING");
+                    SR1_MSGBOX("WOD Client RECV / Error_MySend. Not EWB, PENDING");
                 }
             }
             return;

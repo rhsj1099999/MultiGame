@@ -247,6 +247,68 @@ bool MySend_Ptr(ClientSession* pSession, void* Ptr, int size, PacketHeader::Pack
     return Return;
 }
 
+
+bool ReadStringFromFile(string* directory, string* ret)
+{
+    ifstream file((*directory).c_str()); //VC Try
+
+    if (file.is_open() == false)
+    {
+        file.close();
+        return false;
+    }
+
+    if (!getline(file, *ret))
+    {
+        file.close();
+        return false;
+    }
+
+    file.close();
+    return true;
+}
+
+
+
+
+bool WSAGetLastError_MessageReport(int ret)
+{
+    if (ret == 0)
+    {
+        return true;
+    }
+
+    int errorCode = WSAGetLastError();
+
+    std::cerr << "WSAStartup failed with error: " << errorCode << std::endl;
+
+    switch (errorCode) 
+    {
+    case WSASYSNOTREADY:
+        std::cerr << "Network subsystem is not ready." << std::endl;
+        break;
+    case WSAVERNOTSUPPORTED:
+        std::cerr << "Requested Windows Sockets version is not supported." << std::endl;
+        break;
+    case WSAEINPROGRESS:
+        std::cerr << "A blocking operation is in progress." << std::endl;
+        break;
+    case WSAEPROCLIM:
+        std::cerr << "Too many processes using WinSock." << std::endl;
+        break;
+    case WSAEFAULT:
+        std::cerr << "Invalid WSADATA pointer." << std::endl;
+        break;
+    default:
+        std::cerr << "Unknown error occurred." << std::endl;
+    }
+
+    return false;
+}
+
+
+
+
 void WorkerEntry(HANDLE hHandle, WSABUF* pOut)
 {
     while (true)

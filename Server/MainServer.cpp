@@ -1,17 +1,11 @@
 #include "stdafx.h"
 #include "MainServer.h"
-
 #include "Timer.h"
 #include "PlayingRoom.h"
-#include <fstream>
-#include <string>
 
 
-CMainServer* CMainServer::m_pInstance = nullptr;
+CMainServer* CMainServer::_instance = nullptr;
 
-mutex TempLock;
-
-static int ChangedCount = 0;
 
 CMainServer::CMainServer()
 {
@@ -21,35 +15,50 @@ CMainServer::~CMainServer()
 {
 }
 
+
+CMainServer* CMainServer::GetInstance()
+{
+    if (!_instance)
+    {
+        _instance = new CMainServer;
+    }
+    return _instance;
+}
+
+void CMainServer::Destroy_Instance()
+{
+    if (_instance)
+    {
+        delete _instance;
+        _instance = nullptr;
+    }
+}
+
+
+
+
+
 void CMainServer::Release()
 {
-    if (m_IOCPHandle != INVALID_HANDLE_VALUE)
+    //핸들 닫기
     {
-        CloseHandle(m_IOCPHandle);
-        m_IOCPHandle = INVALID_HANDLE_VALUE;
+        CloseHandle(_iocpHandle);
+        _iocpHandle = INVALID_HANDLE_VALUE;
     }
 
-    for (vector<thread>::iterator Itr = m_vecWorkerThreads.begin(); Itr != m_vecWorkerThreads.end(); ++Itr)
+    //스레드 닫기
     {
-        Itr->join();
+        for (vector<thread>::iterator Itr = _workerThreads.begin(); Itr != _workerThreads.end(); ++Itr)
+        {
+            Itr->join();
+        }
     }
 
-
-    closesocket(m_Socket);
-
-    WSACleanup();
-
-    for (list<CPlayingRoom*>::iterator Itr = m_liPlayingRooms.begin(); Itr != m_liPlayingRooms.end(); ++Itr)
+    //클라 전부 닫기
     {
-        delete (*Itr);
-    }
-    m_liPlayingRooms.clear();
+        LockGuard Temp(_mutex_CurrClientSession);
 
-
-    {
-        LockGuard Temp(m_ListLock);
-
-        for (ClientSession* pCS : m_liClientSockets)
+        for (ClientSession* pCS : _currClientSessions)
         {
             closesocket(pCS->_socket);
 
@@ -59,109 +68,118 @@ void CMainServer::Release()
                 pCS = nullptr;
             }
         }
-        m_liClientSockets.clear();
+        _currClientSessions.clear();
+    }
+
+    //방 닫기
+    {
+        for (list<CPlayingRoom*>::iterator Itr = _currPlayingRooms.begin(); Itr != _currPlayingRooms.end(); ++Itr)
+        {
+            delete (*Itr);
+        }
+        _currPlayingRooms.clear();
+    }
+
+    //서버 닫기
+    {
+        closesocket(_serverSocket);
+        WSACleanup();
     }
 }
 
+
+
 void CMainServer::Init()
 {
+    //WSAStartUp
     WSADATA wsa;
-    if (WSAStartup(MAKEWORD(2, 2), &wsa))
     {
-        //Break;
-    }
-
-    m_Socket = socket
-    (
-        AF_INET,
-        SOCK_STREAM,
-        0
-    );
-
-    if (m_Socket == INVALID_SOCKET)
-    {
-        //Break;
-    }
-
-    unsigned long On = 1;
-    ioctlsocket(m_Socket, FIONBIO, &On);
-    bool bEnable = true;
-    //setsockopt(m_Socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&bEnable, sizeof(bEnable));
-    setsockopt(m_Socket, IPPROTO_TCP, TCP_NODELAY, (const char*)&bEnable, sizeof(bEnable));
-
-
-    std::string projectDirectory = "../OutPut/IPAddress.txt";
-
-    //exe -> ../../IPAddress.txt
-    //VC -> ../IPAddress.txt
-
-    bool bFileRead = false;
-    
-    ifstream file(projectDirectory.c_str()); //VC Try
-    
-    if (file.is_open())
-    {
-        bFileRead = true;
-    }
-    if (bFileRead == false) //EXE Try
-    {
-        file.close();
-        projectDirectory = "../../IPAddress.txt";
-        file = ifstream(projectDirectory.c_str());
-
-        if (file.is_open())
+        if (WSAGetLastError_MessageReport(WSAStartup(MAKEWORD(2, 2), &wsa)) == false)
         {
-            bFileRead = true;
+            return;
+        }
+    }
+    
+    //소켓생성
+    {
+        _serverSocket = socket
+        (
+            AF_INET,
+            SOCK_STREAM,
+            0
+        );
+
+        unsigned long On = 1;
+        ioctlsocket(_serverSocket, FIONBIO, &On);
+        bool bEnable = true;
+        setsockopt(_serverSocket, IPPROTO_TCP, TCP_NODELAY, (const char*)&bEnable, sizeof(bEnable));
+    }
+
+    //IP읽기 준비 (메모장에 있네?)
+    string serverIPAddress;
+    string serverIPAddressDirectory = "../OutPut/IPAddress.txt";
+    {
+        bool readSuccess = ReadStringFromFile(&serverIPAddressDirectory, &serverIPAddress);
+
+        if (readSuccess == false)
+        {
+            serverIPAddressDirectory = "../../IPAddress.txt";
+            readSuccess = ReadStringFromFile(&serverIPAddressDirectory, &serverIPAddress);
+        }
+
+        if (readSuccess == false)
+        {
+            SR1_MSGBOX("Fail To read Open AddressFile");
         }
     }
 
-    if (bFileRead == false)
+    SOCKADDR_IN serverADDR;
+    //serverADDR 준비
     {
-        SR1_MSGBOX("Failed to open the file");
-        return;
-    }
-    
-    
-    string line;
-    if (!(getline(file, line)))
-    {
-        SR1_MSGBOX("Failed to Read");
-        return;
-    }
-    
-    SOCKADDR_IN m_ServerAddr;
-    ZeroMemory(&m_ServerAddr, sizeof(m_ServerAddr));
-    m_ServerAddr.sin_family = AF_INET;
-    inet_pton(AF_INET, line.c_str(), &m_ServerAddr.sin_addr);
-    m_ServerAddr.sin_port = htons(7777);
-    file.close();
-
-
-    if (bind(m_Socket, (SOCKADDR*)&m_ServerAddr, sizeof(m_ServerAddr)) == SOCKET_ERROR)
-    {
-        //Break;
+        ZeroMemory(&serverADDR, sizeof(serverADDR));
+        serverADDR.sin_family = AF_INET;
+        inet_pton(AF_INET, serverIPAddress.c_str(), &serverADDR.sin_addr);
+        serverADDR.sin_port = htons(7777);
     }
 
-    if (m_IOCPHandle == INVALID_HANDLE_VALUE)
-        m_IOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
-
-    for (int i = 0; i < 10; i++)
+    //소켓에 ADDR 바인드
     {
-        m_vecWorkerThreads.push_back(thread([=]()
+        WSAGetLastError_MessageReport(bind(_serverSocket, (SOCKADDR*)&serverADDR, sizeof(serverADDR)));
+    }
+
+
+    //IOCP 핸들 준비
+    {
+        _iocpHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
+        if (_iocpHandle == INVALID_HANDLE_VALUE)
+        {
+            SR1_MSGBOX("Fail To Ready IOCPHandle");
+        }
+    }
+
+
+    //워커 스레드 밀어넣기
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            _workerThreads.push_back(thread([=]()
             {
-                WorkerEntry_D(m_IOCPHandle);
+                WorkerEntry_D(_iocpHandle);
             }));
+        }
     }
 
-    char serverIP[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &m_ServerAddr.sin_addr, serverIP, INET_ADDRSTRLEN);
-    std::cout << "Server IP: " << serverIP << std::endl;
-
-    cout << "Now Listen Try" << endl;
-
-    if (listen(m_Socket, 10) == SOCKET_ERROR)
+    //리슨 시작
     {
-        //Break;
+        char serverIP[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &serverADDR.sin_addr, serverIP, INET_ADDRSTRLEN);
+        if (WSAGetLastError_MessageReport(listen(_serverSocket, 10)) == false)
+        {
+            return;
+        }
+
+        std::cout << "Server IP: " << serverIP << std::endl;
+        std::cout << "---Listen---" << std::endl;
     }
 }
 
@@ -176,37 +194,21 @@ void CMainServer::Tick()
 
 void CMainServer::DeleteRoom(CPlayingRoom* RoomPtr)
 {
-    for (list<CPlayingRoom*>::iterator Itr = m_liPlayingRooms.begin(); Itr != m_liPlayingRooms.end(); ++Itr)
+    for (list<CPlayingRoom*>::iterator Itr = _currPlayingRooms.begin(); Itr != _currPlayingRooms.end(); ++Itr)
     {
         if ((*Itr) == RoomPtr)
         {
             delete (*Itr);
 
-            Itr = m_liPlayingRooms.erase(Itr);
+            Itr = _currPlayingRooms.erase(Itr);
 
-            if (Itr == m_liPlayingRooms.end())
+            if (Itr == _currPlayingRooms.end())
                 break;
         }
     }
 }
 
-CMainServer* CMainServer::GetInstance()
-{
-	if (!m_pInstance)
-	{
-		m_pInstance = new CMainServer;
-	}
-	return m_pInstance;
-}
 
-void CMainServer::Destroy_Instance()
-{
-	if (m_pInstance)
-	{
-		delete m_pInstance;
-		m_pInstance = nullptr;
-	}
-}
 
 
 void CMainServer::ConnectTry()
@@ -215,7 +217,7 @@ void CMainServer::ConnectTry()
     SOCKADDR_IN ClientAddress;
     __int32 AddrLen = sizeof(ClientAddress);
 
-    ClientSocket = accept(m_Socket, (SOCKADDR*)&ClientAddress, &AddrLen);
+    ClientSocket = accept(_serverSocket, (SOCKADDR*)&ClientAddress, &AddrLen);
 
     if (ClientSocket == INVALID_SOCKET)
         return;
@@ -233,18 +235,18 @@ void CMainServer::ConnectTry()
     pSession->_clientState = ClientSession::ClientState::WAITING;
     pSession->_circularQueue = new CircularQueue(BUF384);
 
-    CreateIoCompletionPort((HANDLE)ClientSocket, m_IOCPHandle, /*Key*/(ULONG_PTR)pSession, 0);
+    CreateIoCompletionPort((HANDLE)ClientSocket, _iocpHandle, /*Key*/(ULONG_PTR)pSession, 0);
 
     {
-        LockGuard TempListLock(m_ListLock);
-        m_liClientSockets.push_back(pSession);
-        m_iCurrUser = static_cast<__int32>(m_liClientSockets.size());
+        LockGuard TempListLock(_mutex_CurrClientSession);
+        _currClientSessions.push_back(pSession);
+        _currUserCount = static_cast<__int32>(_currClientSessions.size());
 
-        LockGuard TempQueueLock(m_WatiingLock);
-        m_liWatingClients.push_back(pSession);
+        LockGuard TempQueueLock(_mutex_CurrWaitingClientSession);
+        _currWaitingClientSessions.push_back(pSession);
     }
 
-    cout << "Client Connected Users : " << m_iCurrUser << endl;
+    cout << "Client Connected Users : " << _currUserCount << endl;
 
     pSession->_byteToSend = pSession->_circularQueue->GetSize();
     pSession->_wsaBuffer_Send.buf = pSession->_circularQueue->GetBuffer();
@@ -259,20 +261,15 @@ void CMainServer::ConnectTry()
     DWORD recvLen = 0;
     DWORD flag = 0;
 
-    for (ClientSession* pCS : m_liClientSockets)
+    for (ClientSession* pCS : _currClientSessions)
     {
         if (pCS->PlayingRoomPtr != nullptr)
             continue;
 
-        MySend<int>(pCS, m_iCurrUser, PacketHeader::PacketType::USERCOUNT);
+        MySend<int>(pCS, _currUserCount, PacketHeader::PacketType::USERCOUNT);
     }
     
     WSARecv(pSession->_socket, &pSession->_wsaBuffer_Recv, 1, &recvLen, &flag, &pSession->_overlapped_Recv, NULL);
-}
-
-void CMainServer::TickWatingClients()
-{
-
 }
 
 
@@ -284,7 +281,7 @@ void CMainServer::LiveCheck()
 
     bool bTempDead = false;
 
-    for (list<ClientSession*>::iterator Itr = m_liClientSockets.begin(); Itr != m_liClientSockets.end(); ++Itr)
+    for (list<ClientSession*>::iterator Itr = _currClientSessions.begin(); Itr != _currClientSessions.end(); ++Itr)
     {
         bTempDead = false;
 
@@ -306,18 +303,18 @@ void CMainServer::LiveCheck()
         if (bTempDead)
         {
             {
-                LockGuard TempWating(m_WatiingLock);
-                for (list<ClientSession*>::iterator Itr_W = m_liWatingClients.begin(); Itr_W != m_liWatingClients.end(); ++Itr_W)
+                LockGuard TempWating(_mutex_CurrWaitingClientSession);
+                for (list<ClientSession*>::iterator Itr_W = _currWaitingClientSessions.begin(); Itr_W != _currWaitingClientSessions.end(); ++Itr_W)
                 {
-                    Itr_W = m_liWatingClients.erase(Itr_W);
+                    Itr_W = _currWaitingClientSessions.erase(Itr_W);
 
-                    if (Itr_W == m_liWatingClients.end())
+                    if (Itr_W == _currWaitingClientSessions.end())
                         break;
                 }
             }
 
 
-            LockGuard Temp(m_ListLock);
+            LockGuard Temp(_mutex_CurrClientSession);
 
             if ((*Itr)->PlayingRoomPtr != nullptr)
                 static_cast<CPlayingRoom*>((*Itr)->PlayingRoomPtr)->ClientDead((*Itr));
@@ -326,14 +323,14 @@ void CMainServer::LiveCheck()
 
             delete (*Itr);
 
-            Itr = m_liClientSockets.erase(Itr);
+            Itr = _currClientSessions.erase(Itr);
 
-            m_iCurrUser = static_cast<int>(m_liClientSockets.size());
+            _currUserCount = static_cast<int>(_currClientSessions.size());
 
-            cout << "Client TimeOut. Users : " << m_iCurrUser << endl;
+            cout << "Client TimeOut. Users : " << _currUserCount << endl;
             
 
-            if (Itr == m_liClientSockets.end())
+            if (Itr == _currClientSessions.end())
                 break;
         }
     }
@@ -341,9 +338,9 @@ void CMainServer::LiveCheck()
 
 void CMainServer::MatchingRoom()
 {
-    if (m_liWatingClients.size() >= MAXCLIENTS)
+    if (_currWaitingClientSessions.size() >= MAXCLIENTS)
     {
-        LockGuard Temp(m_WatiingLock);
+        LockGuard Temp(_mutex_CurrWaitingClientSession);
 
         CPlayingRoom* pNewRoom = new CPlayingRoom();
 
@@ -357,7 +354,7 @@ void CMainServer::MatchingRoom()
 
         for (int i = 0; i < MAXCLIENTS; i++)
         {
-            ClientSession* pSession = m_liWatingClients.front();
+            ClientSession* pSession = _currWaitingClientSessions.front();
 
             pArr[i] = pSession;
 
@@ -368,11 +365,11 @@ void CMainServer::MatchingRoom()
             MySend<PlayingRoomSessionDesc>(pSession, Desc, PacketHeader::PacketType::SCENECHANGE_TOPLAY);
 
 
-            m_liWatingClients.erase(m_liWatingClients.begin());
+            _currWaitingClientSessions.erase(_currWaitingClientSessions.begin());
         }
 
-        pNewRoom->Init(pArr, m_liClientSockets);
-        m_liPlayingRooms.push_back(pNewRoom);
+        pNewRoom->Init(pArr, _currClientSessions);
+        _currPlayingRooms.push_back(pNewRoom);
     }
 }
 
@@ -472,17 +469,17 @@ void CMainServer::Lock_Queue(VFPtr pFArr[], int ArrSize, void* Args[])
 void CMainServer::Lock_Queue_Push(void* Ptr)
 {
     ClientSession** Casted = static_cast<ClientSession**>(Ptr);
-    m_liWatingClients.push_back((*Casted));
+    _currWaitingClientSessions.push_back((*Casted));
 }
 
 void CMainServer::Lock_Queue_ChangingRoom(void* Ptr)
 {
-    if (m_liWatingClients.size() >= 3)
+    if (_currWaitingClientSessions.size() >= 3)
     {
         for (int i = 0; i < 3; i++)
         {
-            m_liWatingClients.front()->_clientState = ClientSession::ClientState::PLAYING;
-            m_liWatingClients.erase(m_liWatingClients.begin());
+            _currWaitingClientSessions.front()->_clientState = ClientSession::ClientState::PLAYING;
+            _currWaitingClientSessions.erase(_currWaitingClientSessions.begin());
         }
     }
 }
@@ -501,7 +498,7 @@ void CMainServer::WorkerEntry_D(HANDLE hHandle)
 
         if (bRet == FALSE || Bytes == 0)
         {
-            if (m_IOCPHandle == INVALID_HANDLE_VALUE)
+            if (_iocpHandle == INVALID_HANDLE_VALUE)
                 return;
 
             closesocket(pSession->_socket);
