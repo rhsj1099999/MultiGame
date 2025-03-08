@@ -1,4 +1,6 @@
-.vs/
+#-------------------------------------
+#이건 뭐야
+#-------------------------------------
 .htaccess
 css.php
 rpc/
@@ -8,8 +10,25 @@ sites/site*/public/admin/
 sites/site*/public/setup/
 sites/site*/public/theme/
 HISTORY.txt
+
+
+
+.vs/
+
+
+
+
+
+#-------------------------------------
+#이건 뭐야
+#-------------------------------------
+*.obj
+*.idb
+*.pdb
+*.tlog
+*.exe
+
 Server/x64/
 Client/x64/
-*.obj
 
 
