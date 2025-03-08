@@ -27,5 +27,6 @@ Client/x64/
 *.tlog
 *.idb
 *.db
+*.suo
 
 
