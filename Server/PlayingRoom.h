@@ -8,7 +8,11 @@ class CPlayingRoom
 	public:		ClientSession** GetClients() { return _roomMembers; }
 	public:		void Init(ClientSession* pThreeSession[], list<ClientSession*>& pReturnList);
 	public:		void ClientDead(ClientSession* pSession);
-	public:		void ExecutionMessage_InRoom(PacketHeader::PacketType eType, void* pData, int DataSize);
+
+
+	public:		void BroadCast_RotateAngle(PAK_ROTATEANGLE* pRotateAngleFollow);
+	public:		void BroadCast_BladeInserted(PAK_BLADEINSERT* pBladeInsertedPacket);
+	public:		void BroadCast_ClientChattingShoot(PAK_ChattingMessageToRoom* pClientChattingMessageToRoom);
 
 
 

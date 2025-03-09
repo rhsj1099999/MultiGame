@@ -115,11 +115,15 @@ class CircularQueue
     public:     void Enqueqe_Ptr(void* Ptr, int memSize);
 
       template<typename T>
-      void Enqueqe_Instance(T& Instance)
+      void Enqueqe_Instance(T& Instance, int variableSize = -1)
       {
+          int size = (variableSize < 0)
+              ? sizeof(T)
+              : variableSize;
+
           bool bMessageReady = false;
 
-          if (isFull() || isFull_Add(sizeof(T)))
+          if (isFull() || isFull_Add(size))
           {
               return;
           }
@@ -130,48 +134,18 @@ class CircularQueue
           }
 
           int spaceToEnd = _capacity - _rear - 1;
-          if (_front > _rear && sizeof(T) > spaceToEnd)
+          if (_front > _rear && size > spaceToEnd)
           {
               memcpy(&_data + _rear + 1, &Instance, spaceToEnd);
-              memcpy(&_data, &Instance + spaceToEnd, sizeof(T) - spaceToEnd);
+              memcpy(&_data, &Instance + spaceToEnd, size - spaceToEnd);
           }
           else
           {
-              memcpy(&_data[_rear], &Instance, sizeof(T));
+              memcpy(&_data[_rear], &Instance, size);
           }
 
-          _rear = (_rear + sizeof(T)) % _capacity;
-          _size += sizeof(T);
-      }
-
-      template<typename T>
-      void Enqueqe_InstanceRVal(T&& Instance)
-      {
-          bool bMessageReady = false;
-          if (isFull() || isFull_Add(sizeof(T)))
-          {
-              return;
-          }
-          else if (isEmpty())
-          {
-              _front = _rear = 0;
-              bMessageReady = true;
-          }
-
-          int spaceToEnd = _capacity - _rear - 1;
-          if (_front > _rear && sizeof(T) > spaceToEnd)
-          {
-              memcpy(&_data + _rear + 1, &Instance, spaceToEnd);
-              memcpy(&_data, &Instance + spaceToEnd, sizeof(T) - spaceToEnd);
-          }
-          else
-          {
-              memcpy(&_data[_rear], &Instance, sizeof(T));
-          }
-
-
-          _rear = (_rear + sizeof(T)) % _capacity;
-          _size += sizeof(T);
+          _rear = (_rear + size) % _capacity;
+          _size += size;
       }
 
       template<typename T>
@@ -267,50 +241,248 @@ class PacketHeader
 };
 
 
-
-
-struct PlayingRoomSessionDesc
+struct PacketBase 
 {
-    public:     int MyNumber = -1;
-    public:     void* MyRoomPtr = nullptr;
+    PacketBase() {}
+    PacketBase(PacketHeader::PacketType eOrder) {}
+    virtual int GetPacketSize() = 0;
 };
 
-struct PAK_ROTATEANGLE
+
+struct PAK_HeartBeat : PacketBase
 {
-    PlayingRoomSessionDesc RoomSessionDesc = {};
-    float Angle = 0.0f;
+    PAK_HeartBeat() {}
+    int GetPacketSize() override { return sizeof(PAK_HeartBeat); }
 };
 
-struct PAK_BLADEINSERT
+
+
+struct PAK_UserCount : PacketBase
 {
-    PlayingRoomSessionDesc RoomSessionDesc = {};
-    int Index = 0;
+    PAK_UserCount
+    (
+        int usercount
+    )
+        : _usercount(usercount){}
+
+    int GetPacketSize() override { return sizeof(PAK_UserCount); }
+
+    int _usercount = 0;
 };
 
-struct PAK_INSERTFOLLOW
+
+
+
+struct PAK_ROTATEANGLE_Follow : PacketBase
 {
-    int PlayerIndex = 0;
-    int HoldIndex = 0;
+    PAK_ROTATEANGLE_Follow
+    (
+        float angle
+    )
+        : _angle(angle) {}
+
+    int GetPacketSize() override { return sizeof(PAK_ROTATEANGLE_Follow); }
+
+    float _angle = 0.0f;
 };
 
-class PAK_ChattingMessage
+
+
+struct PAK_INSERTFOLLOW : PacketBase
 {
-    public:     enum class MSGType
+    PAK_INSERTFOLLOW
+    (
+        int inertPlayerIndex,
+        int insertedIndex
+    )
+        : _inertPlayerIndex(inertPlayerIndex)
+        , _insertedIndex(insertedIndex) {}
+
+    int GetPacketSize() override { return sizeof(PAK_INSERTFOLLOW); }
+
+    int _inertPlayerIndex = 0;
+    int _insertedIndex = 0;
+};
+
+
+struct PAK_TurnChanged : PacketBase
+{
+    PAK_TurnChanged
+    (
+        int nextPlayerIndex
+    )
+        : _nextPlayerIndex(nextPlayerIndex) {}
+
+    int GetPacketSize() override { return sizeof(PAK_TurnChanged); }
+
+    int _nextPlayerIndex = 0;
+};
+
+
+struct PAK_GameEnd : PacketBase
+{
+    PAK_GameEnd
+    (
+        int winPlayer
+    )
+        : _winPlayer(winPlayer) {}
+
+    int GetPacketSize() override { return sizeof(PAK_GameEnd); }
+
+    int _winPlayer = 0;
+};
+
+
+struct PAK_ChattingMessage
+{
+    enum class MSGType
     {
         Sys,
         User,
         END,
     };
 
-    public:     PAK_ChattingMessage(MSGType Type, wchar_t* Buffer, DWORD SendTime)
+    PAK_ChattingMessage
+    (
+        MSGType Type,
+        DWORD SendTime,
+        const wchar_t* Buffer
+    )
         : _messageType(Type)
-        , _message(Buffer)
-        , _time(SendTime) {}
+        , _time(SendTime) 
+    {
+        _message.assign(Buffer);
+    }
 
-    public:     MSGType _messageType = MSGType::END;
-    public:     wstring _message;
-    public:     DWORD _time;
+    MSGType _messageType = MSGType::END;
+    wstring _message;
+    DWORD _time;
+
+    int GetStrSize() { return (_message.length() * sizeof(wchar_t)); }
 };
+
+
+struct PAK_ChattingToSingle : PacketBase, PAK_ChattingMessage
+{
+    PAK_ChattingToSingle
+    (
+        MSGType Type,
+        DWORD SendTime,
+        const wchar_t* Buffer
+    )
+        : PAK_ChattingMessage(Type, SendTime, Buffer) {}
+
+    int GetPacketSize() override { return sizeof(PAK_ChattingToSingle) + GetStrSize(); }
+};
+
+
+
+
+
+struct PlayingRoomSessionDesc
+{
+    int _myNumber = -1;
+    void* _myRoomPtr = nullptr;
+};
+
+
+
+
+struct PacketBaseRoomBroadCast : PacketBase
+{
+    PacketBaseRoomBroadCast
+    (
+        int playerIndex,
+        void* roomPtr
+    )
+        : _myNumber(playerIndex)
+        , _myRoomPtr(roomPtr) {}
+
+    int _myNumber = -1;
+    void* _myRoomPtr = nullptr;
+
+    int GetPacketSize() override { return sizeof(PacketBaseRoomBroadCast); }
+};
+
+
+
+struct PAK_SceneChange : PacketBaseRoomBroadCast
+{
+    PAK_SceneChange
+    (
+        int playerIndex,
+        void* roomPtr
+    )
+        : PacketBaseRoomBroadCast(playerIndex, roomPtr) {}
+
+    int GetPacketSize() override { return sizeof(PAK_SceneChange); }
+};
+
+
+
+struct PAK_ROTATEANGLE : PacketBaseRoomBroadCast
+{
+    PAK_ROTATEANGLE
+    (
+        int playerIndex,
+        void* roomPtr,
+        float angle
+    )
+        : PacketBaseRoomBroadCast(playerIndex, roomPtr)
+        , _angle(angle) {}
+
+    float _angle = 0.0f;
+
+    int GetPacketSize() override { return sizeof(PAK_ROTATEANGLE); }
+};
+
+
+
+
+struct PAK_BLADEINSERT : PacketBaseRoomBroadCast
+{
+    PAK_BLADEINSERT
+    (
+        int playerIndex,
+        void* roomPtr,
+        int insertedIndex
+    )
+        : PacketBaseRoomBroadCast(playerIndex, roomPtr)
+        , _insertedIndex(insertedIndex) {}
+
+    int _insertedIndex = 0;
+
+    int GetPacketSize() override { return sizeof(PAK_ROTATEANGLE); }
+};
+
+
+
+struct PAK_ChattingMessageToRoom : PacketBaseRoomBroadCast, PAK_ChattingMessage
+{
+    PAK_ChattingMessageToRoom
+    (
+        int playerIndex,
+        void* roomPtr,
+
+        MSGType Type,
+        DWORD SendTime,
+        wchar_t* Buffer
+    )
+        : PacketBaseRoomBroadCast(playerIndex, roomPtr)
+        , PAK_ChattingMessage(Type, SendTime, Buffer) {}
+
+    int GetPacketSize() override { return sizeof(PAK_ChattingMessageToRoom) + GetStrSize(); }
+};
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -378,11 +550,8 @@ struct ClientSession
 
 
 
-
-
-
 template<typename T>
-bool MySend(ClientSession* pSession, T& Instance, PacketHeader::PacketType Type)
+bool MySend(ClientSession* pSession, T& Instance, PacketHeader::PacketType packetType)
 {
     bool Return = true;
 
@@ -391,21 +560,25 @@ bool MySend(ClientSession* pSession, T& Instance, PacketHeader::PacketType Type)
 
     LockGuard Temp(pSession->_circularQueue->GetMutex());
 
-    bool bTempMessageSend = false;
-    if (pSession->_circularQueue->GetSize() == 0)
-        bTempMessageSend = true;
+    bool bTempMessageSend = (pSession->_circularQueue->GetSize() == 0);
 
-    pSession->_circularQueue->Enqueqe_InstanceRVal<PacketHeader>(PacketHeader
-    (
-        sizeof(T),
-        Type
-    ));
-    pSession->_circularQueue->Enqueqe_Instance<T>(Instance);
+    PacketHeader header = PacketHeader();
+    header._packetType = packetType;
+    header._packetSize = Instance.GetPacketSize();
+
+    int variableSize = (header._packetSize == sizeof(T))
+        ? -1 //고정길이 패킷입니다
+        : header._packetSize;
+
+    pSession->_circularQueue->Enqueqe_Instance<PacketHeader>(header);
+
+    pSession->_circularQueue->Enqueqe_Instance<T>(Instance, variableSize);
 
     if (bTempMessageSend == true)
     {
         DWORD recvLen = 0;
         DWORD flag = 0;
+
         pSession->_wsaBuffer_Send.buf = (char*)pSession->_circularQueue->GetFrontPtr();
         pSession->_wsaBuffer_Send.len = pSession->_circularQueue->GetSize();
 
@@ -423,13 +596,8 @@ bool MySend(ClientSession* pSession, T& Instance, PacketHeader::PacketType Type)
     return Return;
 }
 
-bool MySend_Ptr(ClientSession* pSession, void* Ptr, int Size, PacketHeader::PacketType Type);
 
 void WorkerEntry(HANDLE hHandle, WSABUF* pOut);
-
-
-
-
 
 class CBase
 {

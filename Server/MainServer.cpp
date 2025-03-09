@@ -115,7 +115,7 @@ void CMainServer::Init()
         setsockopt(_serverSocket, IPPROTO_TCP, TCP_NODELAY, (const char*)&bEnable, sizeof(bEnable));
     }
 
-    //IP읽기 준비 (메모장에 있네?)
+    //IP읽기 준비 (메모장에 있어요)
     string serverIPAddress;
     string serverIPAddressDirectory = "../OutPut/IPAddress.txt";
     {
@@ -266,7 +266,9 @@ void CMainServer::ConnectTry()
         if (pCS->PlayingRoomPtr != nullptr)
             continue;
 
-        MySend<int>(pCS, _currUserCount, PacketHeader::PacketType::USERCOUNT);
+        PAK_UserCount packetUserCount = PAK_UserCount(_currUserCount);
+
+        MySend<PAK_UserCount>(pCS, packetUserCount, PacketHeader::PacketType::USERCOUNT);
     }
     
     WSARecv(pSession->_socket, &pSession->_wsaBuffer_Recv, 1, &recvLen, &flag, &pSession->_overlapped_Recv, NULL);
@@ -346,10 +348,15 @@ void CMainServer::MatchingRoom()
 
         ClientSession* pArr[MAXCLIENTS] = { nullptr, };
 
-        PlayingRoomSessionDesc Desc
+        PAK_SceneChange pakcetGameStart
         {
-            -1,
+            0,
             pNewRoom
+        };
+
+        PAK_TurnChanged packetTurnChanged
+        {
+            0,
         };
 
         for (int i = 0; i < MAXCLIENTS; i++)
@@ -360,11 +367,11 @@ void CMainServer::MatchingRoom()
 
             pSession->PlayingRoomPtr = pNewRoom;
 
-            Desc.MyNumber = i;
+            pakcetGameStart._myNumber = i;
 
-            MySend<PlayingRoomSessionDesc>(pSession, Desc, PacketHeader::PacketType::SCENECHANGE_TOPLAY);
-
-
+            MySend<PAK_SceneChange>(pSession, pakcetGameStart, PacketHeader::PacketType::SCENECHANGE_TOPLAY);
+            MySend<PAK_TurnChanged>(pSession, packetTurnChanged, PacketHeader::PacketType::TURNCHANGED);
+            
             _currWaitingClientSessions.erase(_currWaitingClientSessions.begin());
         }
 
@@ -379,69 +386,36 @@ bool CMainServer::ExecuetionMessage(PacketHeader::PacketType eType, void* pData,
 
     switch (eType)
     {
-    case PacketHeader::PacketType::USERCOUNT:
-        break;
-    case PacketHeader::PacketType::MESSAGECHANGE:
-        break;
-    case PacketHeader::PacketType::SCENECHANGE_TOPLAY:
-        break;
-    case PacketHeader::PacketType::SCENECHANGE_TOWORLD:
-        break;
-    case PacketHeader::PacketType::TURNON:
-        break;
-    case PacketHeader::PacketType::TURNOFF:
-        break;
     case PacketHeader::PacketType::ROTATEANGLE:
     {
-        char* pCharCasted = static_cast<char*>(pData);
+        //클라가 로테이트 앵글을 했다
+        PAK_ROTATEANGLE* pCasted = static_cast<PAK_ROTATEANGLE*>(pData);
 
-        PAK_ROTATEANGLE Data;
+        CPlayingRoom* pRoom = static_cast<CPlayingRoom*>(pCasted->_myRoomPtr);
 
-        memcpy(&Data, pCharCasted, sizeof(PAK_ROTATEANGLE));
-
-        CPlayingRoom* pRoom = static_cast<CPlayingRoom*>(Data.RoomSessionDesc.MyRoomPtr);
-
-        pRoom->ExecutionMessage_InRoom(eType, &Data, sizeof(PAK_ROTATEANGLE));
-
+        pRoom->BroadCast_RotateAngle(pCasted);
     }
         break;
     case PacketHeader::PacketType::PLAYERBLADEINSERTED:
     {
-        char* pCharCasted = static_cast<char*>(pData);
+        //클라가 칼을 꼽았다
+        PAK_BLADEINSERT* pCasted = static_cast<PAK_BLADEINSERT*>(pData);
 
-        PAK_BLADEINSERT Data;
+        CPlayingRoom* pRoom = static_cast<CPlayingRoom*>(pCasted->_myRoomPtr);
 
-        memcpy(&Data, pCharCasted, sizeof(PAK_BLADEINSERT));
-
-        CPlayingRoom* pRoom = static_cast<CPlayingRoom*>(Data.RoomSessionDesc.MyRoomPtr);
-
-        pRoom->ExecutionMessage_InRoom(eType, &Data, sizeof(PAK_BLADEINSERT));
+        pRoom->BroadCast_BladeInserted(pCasted);
     }
         break;
     case PacketHeader::PacketType::HEARTBEAT:
         break;
     case PacketHeader::PacketType::CLIENTCHATSHOOT:
     {
-        char* pCharCasted = static_cast<char*>(pData);
+        PAK_ChattingMessageToRoom* pCasted = static_cast<PAK_ChattingMessageToRoom*>(pData);
 
-        PAK_ChattingMessage::MSGType TempType = {};
-        PlayingRoomSessionDesc TempRoomDesc = {};
-        char PacData[MAX_PATH] = {};
-        int CharSize = DataSize - (sizeof(TempType) + sizeof(TempRoomDesc));
-        
-        memcpy(&TempRoomDesc, &pCharCasted[sizeof(TempType)], sizeof(TempRoomDesc));
-        memcpy(PacData, pCharCasted, sizeof(PAK_ChattingMessage::MSGType));
-        memcpy(&PacData[sizeof(PAK_ChattingMessage::MSGType)], &TempRoomDesc.MyNumber, sizeof(int));
-        memcpy(&PacData[sizeof(TempType) + sizeof(int)], &pCharCasted[(sizeof(TempType) + sizeof(TempRoomDesc))], CharSize);
+        CPlayingRoom* pRoom = static_cast<CPlayingRoom*>(pCasted->_myRoomPtr);
 
-        CPlayingRoom* pRoom = static_cast<CPlayingRoom*>(TempRoomDesc.MyRoomPtr);
-
-        pRoom->ExecutionMessage_InRoom(eType, PacData, CharSize + sizeof(int) + sizeof(TempType));
+        pRoom->BroadCast_ClientChattingShoot(pCasted);
     }
-        break;
-    case PacketHeader::PacketType::SERVERCHATSHOOT:
-        break;
-    case PacketHeader::PacketType::END:
         break;
     default:
         break;
@@ -483,8 +457,6 @@ void CMainServer::Lock_Queue_ChangingRoom(void* Ptr)
         }
     }
 }
-
-
 
 void CMainServer::WorkerEntry_D(HANDLE hHandle)
 {
@@ -530,7 +502,6 @@ void CMainServer::WorkerEntry_D(HANDLE hHandle)
                 int ERR = WSAGetLastError();
                 if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
                 {
-                    //MSGBOX("WOD Server Send / Error_MySend. Not EWB, PENDING");
                     closesocket(pSession->_socket);
                 }
             }

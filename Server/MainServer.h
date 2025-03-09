@@ -52,5 +52,10 @@ class CMainServer : public CBase
 	private:	list<CPlayingRoom*> _currPlayingRooms;
 	private:	mutex _mutex_CurrPlayingRooms = {};
 
+
+
+	
+
+
 };
 

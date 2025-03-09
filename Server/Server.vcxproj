@@ -159,6 +159,7 @@
     </ClCompile>
     <ClCompile Include="MainInstance.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="PacketExecutionBase.cpp" />
     <ClCompile Include="PlayingRoom.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
@@ -176,6 +177,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="MainInstance.h" />
+    <ClInclude Include="PacketExecutionBase.h" />
     <ClInclude Include="PlayingRoom.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Timer.h" />

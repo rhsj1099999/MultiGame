@@ -3,7 +3,6 @@
 #include "UpCase.h"
 #include "KeyMgr.h"
 #include "UIMgr.h"
-//#include "Cursor.h"
 #include "CServerManager.h"
 
 
@@ -74,15 +73,18 @@ int CCaseHoles::Update()
 
 					CServerManager::Get_Instance()->SetMyTurn(false);
 
-					m_iColorIndex = CServerManager::Get_Instance()->GetRoomDesc().MyNumber;
+					m_iColorIndex = CServerManager::Get_Instance()->GetRoomDesc()._myNumber;
 
 					ClientSession* pSession = CServerManager::Get_Instance()->GetSession();
 
-					PAK_BLADEINSERT TempData = {};
+					PlayingRoomSessionDesc roomDesc = CServerManager::Get_Instance()->GetRoomDesc();
 
-					TempData.RoomSessionDesc = CServerManager::Get_Instance()->GetRoomDesc();
-
-					TempData.Index = m_iHoleIndex;
+					PAK_BLADEINSERT TempData = PAK_BLADEINSERT
+					(
+						roomDesc._myNumber,
+						roomDesc._myRoomPtr,
+						m_iHoleIndex
+					);
 
 					MySend<PAK_BLADEINSERT>(pSession, TempData, PacketHeader::PacketType::PLAYERBLADEINSERTED);
 				}

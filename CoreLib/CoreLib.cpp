@@ -206,47 +206,6 @@ int CircularQueue::GetSize()
     return _size;
 }
 
-bool MySend_Ptr(ClientSession* pSession, void* Ptr, int size, PacketHeader::PacketType Type)
-{
-    bool Return = true;
-
-    if (pSession->_socket == INVALID_SOCKET)
-        return false;
-
-    LockGuard Temp(pSession->_circularQueue->GetMutex());
-
-    bool bTempMessageSend = false;
-    if (pSession->_circularQueue->GetSize() == 0)
-        bTempMessageSend = true;
-
-    pSession->_circularQueue->Enqueqe_InstanceRVal<PacketHeader>(PacketHeader
-    (
-        size,
-        Type
-    ));
-    pSession->_circularQueue->Enqueqe_Ptr(Ptr, size);
-
-    if (bTempMessageSend == true)
-    {
-        DWORD recvLen = 0;
-        DWORD flag = 0;
-        pSession->_wsaBuffer_Send.buf = (char*)pSession->_circularQueue->GetFrontPtr();
-        pSession->_wsaBuffer_Send.len = pSession->_circularQueue->GetSize();
-
-        if (WSASend((pSession)->_socket, &pSession->_wsaBuffer_Send, 1, &recvLen, flag, &(pSession)->_overlapped_Send, NULL) == SOCKET_ERROR)
-        {
-            int ERR = WSAGetLastError();
-            if (ERR != WSAEWOULDBLOCK && ERR != WSA_IO_PENDING)
-            {
-                Return = false;
-                closesocket(pSession->_socket);
-            }
-        }
-    }
-
-    return Return;
-}
-
 
 bool ReadStringFromFile(string* directory, string* ret)
 {

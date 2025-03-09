@@ -22,6 +22,30 @@
     <Filter Include="Design\99. Main_CPP">
       <UniqueIdentifier>{03e02c6d-49b8-495e-bd33-d6c3a4a3bb44}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Design\98. PackExecution">
+      <UniqueIdentifier>{deb744c7-067b-41f1-a956-1902117195cb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Design\98. PackExecution\00. PacketExecutionBase">
+      <UniqueIdentifier>{e819eea5-34b3-4371-a8fa-2420e10549ed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Design\98. PackExecution\01. PacketExecution_">
+      <UniqueIdentifier>{3bbbcb50-181d-4034-be7b-ecf98e3d6773}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Design\98. PackExecution\NewFilter5">
+      <UniqueIdentifier>{48d96a15-0b6a-497b-b429-a9964593e22f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Design\98. PackExecution\02. PacketExecution_RotateAngle">
+      <UniqueIdentifier>{eccbc0a0-beaa-4a4c-9ae1-58385c23702b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Design\98. PackExecution\03. PacketExecution_BladeInsert">
+      <UniqueIdentifier>{287ca904-5534-4123-8ef6-1979c48c1183}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Design\98. PackExecution\04. PacketExecution_BladeInsertFollow">
+      <UniqueIdentifier>{ffcb7f6c-2fef-4749-bed7-ba7008c8a883}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Design\98. PackExecution\05. PacketExecution_Chatting">
+      <UniqueIdentifier>{dd749fc7-3d2c-4f7d-a748-84d6807f9e94}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MainServer.cpp">
@@ -42,6 +66,9 @@
     <ClCompile Include="Main.cpp">
       <Filter>Design\99. Main_CPP</Filter>
     </ClCompile>
+    <ClCompile Include="PacketExecutionBase.cpp">
+      <Filter>Design\98. PackExecution\00. PacketExecutionBase</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MainServer.h">
@@ -58,6 +85,9 @@
     </ClInclude>
     <ClInclude Include="PlayingRoom.h">
       <Filter>Design\03. PlaingRoom_PirateHeadShoot</Filter>
+    </ClInclude>
+    <ClInclude Include="PacketExecutionBase.h">
+      <Filter>Design\98. PackExecution\00. PacketExecutionBase</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

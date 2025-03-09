@@ -142,16 +142,16 @@ int CUpCase::Update()
 					CServerManager::Get_Instance()->SetPreviousAngle(m_fAngle);
 
 					ClientSession* pSession = CServerManager::Get_Instance()->GetSession();
+					PlayingRoomSessionDesc roomDesc = CServerManager::Get_Instance()->GetRoomDesc();
 
-					PAK_ROTATEANGLE TempData = {};
+					PAK_ROTATEANGLE pakcetRotateAngle = PAK_ROTATEANGLE
+					(
+						roomDesc._myNumber,
+						roomDesc._myRoomPtr,
+						m_fAngle
+					);
 
-					int DebugSize = sizeof(TempData);
-
-					TempData.RoomSessionDesc = CServerManager::Get_Instance()->GetRoomDesc();
-
-					TempData.Angle = m_fAngle;
-
-					MySend<PAK_ROTATEANGLE>(pSession, TempData, PacketHeader::PacketType::ROTATEANGLE);
+					MySend<PAK_ROTATEANGLE>(pSession, pakcetRotateAngle, PacketHeader::PacketType::ROTATEANGLE);
 				}
 				
 				CServerManager::Get_Instance()->SetCurrentAngle(m_fAngle);

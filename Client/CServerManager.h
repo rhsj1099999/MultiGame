@@ -75,10 +75,10 @@ public:
 	bool GetMyTurn() { return m_bCanMove; }
 	void SetMyTurn(bool bTurn) { m_bCanMove = bTurn; }
 
-	void SetRoomDesc(PlayingRoomSessionDesc* Ptr)
+	void SetRoomDesc(PlayingRoomSessionDesc& Ptr)
 	{
-		m_tRoomDesc.MyNumber = (*Ptr).MyNumber;
-		m_tRoomDesc.MyRoomPtr = (*Ptr).MyRoomPtr;
+		m_tRoomDesc._myNumber = Ptr._myNumber;
+		m_tRoomDesc._myRoomPtr = Ptr._myRoomPtr;
 	}
 
 	bool GetIsCanInsert(int Index) { return m_HoleVector[Index]; }
@@ -87,7 +87,7 @@ public:
 	void ClearDatas();
 private:
 	void WorkerEntry_D(HANDLE hHandle, char* pOut, int size = 100);
-	bool ExecuetionMessage(PacketHeader::PacketType eType, void* Data, int DataSize);
+	bool ExecuetionMessage(PacketHeader::PacketType packetType, void* pPacketData, int DataSize);
 	PlayingRoomSessionDesc m_tRoomDesc = {};
 
 private:

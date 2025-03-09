@@ -106,6 +106,7 @@ void CServerManager::WorkerEntry_D(HANDLE hHandle, char* pOut, int size)
                             pSession->_buffer,
                             pSession->_latestSendedHeader._packetSize
                         );
+
                         pSession->_isHeaderTransferred = false;
                         pSession->_byteTransferred = 0;
                         pSession->_byteToRead = sizeof(PacketHeader);
@@ -359,14 +360,16 @@ void CServerManager::ChattingUpdate()
 
             if (Buffer[0] != '\0' && bIsOnlyBlank == false && m_bClientConnected == true)
             {
-                char TempPacketPtr[MAX_PATH] = {};
-                PAK_ChattingMessage::MSGType TempMsgType = PAK_ChattingMessage::MSGType::User;
-                int Debug = sizeof(TempMsgType);
-                memcpy(TempPacketPtr, &TempMsgType, sizeof(TempMsgType));
-                Debug = sizeof(m_tRoomDesc);
-                memcpy(&TempPacketPtr[sizeof(TempMsgType)], &m_tRoomDesc, sizeof(m_tRoomDesc));
-                memcpy(&TempPacketPtr[sizeof(TempMsgType) + sizeof(m_tRoomDesc)], &Buffer, Byte);
-                MySend_Ptr(m_pSession, TempPacketPtr, Byte + sizeof(TempMsgType) + sizeof(m_tRoomDesc), PacketHeader::PacketType::CLIENTCHATSHOOT);
+                PAK_ChattingMessageToRoom chattingPacketToRoom = PAK_ChattingMessageToRoom
+                (
+                    m_tRoomDesc._myNumber,
+                    m_tRoomDesc._myRoomPtr,
+                    PAK_ChattingMessage::MSGType::User,
+                    0,
+                    Buffer
+                );
+
+                MySend<PAK_ChattingMessageToRoom>(m_pSession, chattingPacketToRoom, PacketHeader::PacketType::CLIENTCHATSHOOT);
             }
 
             SetWindowText(g_hWndEdit, L"");
@@ -424,7 +427,7 @@ void CServerManager::ShowChattings(HDC hDC)
             break;
         }
 
-        TextOut(hDC, 15, (WINCY - 15) - (MESSAGEYDIFF * Index), (*Itr)._message.c_str(), (*Itr)._message.size());
+        TextOut(hDC, 15, (WINCY - 15) - (MESSAGEYDIFF * Index), (*Itr)._message.c_str(), (*Itr)._message.length());
     }
 
     LeaveCriticalSection_Chat();
@@ -449,8 +452,8 @@ void CServerManager::SendHeartBeat()
 
     if (m_dwHeartBitCounter >= SENDHEARTBEATCYCLE)
     {
-        bool bTempIMALIVE = true;
-        MySend<bool>(m_pSession, bTempIMALIVE, PacketHeader::PacketType::HEARTBEAT);
+        PAK_HeartBeat packetHeartBeat = PAK_HeartBeat();
+        MySend<PAK_HeartBeat>(m_pSession, packetHeartBeat, PacketHeader::PacketType::HEARTBEAT);
     }
 }
 
@@ -525,114 +528,91 @@ void CServerManager::ServerDamaged()
 
 PlayingRoomSessionDesc* CServerManager::GetRoomDescPtr()
 {
-    if (m_tRoomDesc.MyNumber == -1)
+    if (m_tRoomDesc._myNumber == -1)
         return nullptr;
 
     return &m_tRoomDesc;
 
 }
 
-bool CServerManager::ExecuetionMessage(PacketHeader::PacketType eType, void* Data, int DataSize)
+bool CServerManager::ExecuetionMessage(PacketHeader::PacketType packetType, void* pPacketData, int DataSize)
 {
     bool Ret = false;
 
-	switch (eType)
+	switch (packetType)
 	{
 	case PacketHeader::PacketType::USERCOUNT:
-		memcpy(&m_iCurrUser, (int*)Data, sizeof(int));
+    {
+        PAK_UserCount* pCasted = static_cast<PAK_UserCount*>(pPacketData);
+        m_iCurrUser = pCasted->_usercount;
+    }
 		break;
-    case PacketHeader::PacketType::MESSAGECHANGE:
-        memcpy(&m_pSession->_wsaBuffer_Recv.len, (int*)Data, DataSize);
-        break;
-
     case PacketHeader::PacketType::SCENECHANGE_TOPLAY:
     {
+        PAK_SceneChange* pCasted = static_cast<PAK_SceneChange*>(pPacketData);
+
         CSceneMgr::Get_Instance()->Scene_Change(SC_STAGE4, true);
-        PlayingRoomSessionDesc* pCast = static_cast<PlayingRoomSessionDesc*>(Data);
-        CServerManager::Get_Instance()->SetRoomDesc(pCast);
+
+        PlayingRoomSessionDesc roomDesc;
+        roomDesc._myNumber = pCasted->_myNumber;
+        roomDesc._myRoomPtr = pCasted->_myRoomPtr;
+
+        CServerManager::Get_Instance()->SetRoomDesc(roomDesc);
 
         m_HoleVector.clear();
         m_HoleVector.resize(HOLE_HORIZON * HOLE_VERTICAL, true);
         SetCanChat(true);
     }
-
-        break;
-
-    case PacketHeader::PacketType::SCENECHANGE_TOWORLD:
-        CSceneMgr::Get_Instance()->Scene_Change(SC_WORLDMAP);
-        break;
-
-    case PacketHeader::PacketType::TURNOFF:
-        m_bCanMove = false;
-        break;
-
-    case PacketHeader::PacketType::TURNON:
-        m_bCanMove = true;
         break;
 
     case PacketHeader::PacketType::TURNCHANGED:
     {
-        memcpy(&m_iCurrentPlayer, (int*)Data, sizeof(int));
-        m_bCanMove = (m_tRoomDesc.MyNumber == m_iCurrentPlayer) ? true : false;
+        PAK_TurnChanged* pCasted = static_cast<PAK_TurnChanged*>(pPacketData);
+        m_iCurrentPlayer = pCasted->_nextPlayerIndex;
+        m_bCanMove = (m_tRoomDesc._myNumber == m_iCurrentPlayer) ? true : false;
     }
 
         break;
 
-	case PacketHeader::PacketType::END:
-		memcpy(&m_iCurrUser, (int*)Data, DataSize);
-		break;
-
     case PacketHeader::PacketType::FOLLOWANGLE:
-        memcpy(&m_fCurrAngle, (float*)Data, sizeof(float));
+    {
+        PAK_ROTATEANGLE_Follow* pCasted = static_cast<PAK_ROTATEANGLE_Follow*>(pPacketData);
+        m_fCurrAngle = pCasted->_angle;
+    }
         break;
 
     case PacketHeader::PacketType::FOLLOWINDEX:
     {
-        PAK_INSERTFOLLOW TempData = {};
+        PAK_INSERTFOLLOW* pCasted = static_cast<PAK_INSERTFOLLOW*>(pPacketData);
 
-        memcpy(&TempData, (int*)Data, sizeof(PAK_INSERTFOLLOW));
-        m_HoleVector[TempData.HoldIndex] = false;
-        (*m_vecCaseHoles)[TempData.HoldIndex]->SetIsInserted(true, TempData.PlayerIndex);
+        m_HoleVector[pCasted->_insertedIndex] = false;
+        (*m_vecCaseHoles)[pCasted->_insertedIndex]->SetIsInserted(true, pCasted->_inertPlayerIndex);
     }
-
-        break;
-    case PacketHeader::PacketType::HEARTBEAT:
-        break;
-    case PacketHeader::PacketType::CLIENTCHATSHOOT:
         break;
     case PacketHeader::PacketType::SERVERCHATSHOOT:
     {
-        char* Casted = static_cast<char*>(Data);
+        PAK_ChattingToSingle* pCasted = static_cast<PAK_ChattingToSingle*>(pPacketData);
 
-        PAK_ChattingMessage::MSGType TempType = {};
-        int UserIndex = -1;
-        wchar_t TempWCharBuffer[MAXCHATLEN_TOC + NULLSIZE] = {};
+        PAK_ChattingMessage::MSGType TempType = pCasted->_messageType;
 
-        memcpy(&TempType, Casted, sizeof(TempType));
-        memcpy(&UserIndex, &Casted[sizeof(TempType)], sizeof(UserIndex));
-        memcpy(&TempWCharBuffer, &Casted[sizeof(TempType) + sizeof(TempType)], DataSize - (sizeof(TempType) + sizeof(TempType)));
-
-        wchar_t CompleteString[CMPCHAT] = {};
+        wchar_t CompleteString[CMPCHAT];
 
         switch (TempType)
         {
         case PAK_ChattingMessage::MSGType::Sys:
-            wsprintf(CompleteString, L"System : %s", TempWCharBuffer);
+            wsprintf(CompleteString, L"%s", pCasted->_message);
             break;
         case PAK_ChattingMessage::MSGType::User:
-            wsprintf(CompleteString, L"Player [%d] : %s", UserIndex, TempWCharBuffer);
-            break;
-        case PAK_ChattingMessage::MSGType::END:
-            break;
-        default:
+            wsprintf(CompleteString, L"%s", pCasted->_message);
             break;
         }
+
         EnterCriticalSection_Chat();
         m_Chattings.push_front(PAK_ChattingMessage
         (
             TempType,
-            CompleteString,
-            CMainGame::Get_Instance()->GetCurrTime()
+            CMainGame::Get_Instance()->GetCurrTime(),
+            CompleteString
         ));
         LeaveCriticalSection_Chat();
     }
@@ -640,6 +620,8 @@ bool CServerManager::ExecuetionMessage(PacketHeader::PacketType eType, void* Dat
 
     case PacketHeader::PacketType::GAMEEND:
     {
+        PAK_GameEnd* pCasted = static_cast<PAK_GameEnd*>(pPacketData);
+
         m_bGameIsEnd = true;
 
         if (m_pPirateHeadPtr != nullptr)
@@ -647,56 +629,43 @@ bool CServerManager::ExecuetionMessage(PacketHeader::PacketType eType, void* Dat
             m_pPirateHeadPtr->SetForcedGoUp(true);
         }
 
-        char* Casted = static_cast<char*>(Data);
-
-        int Inserted = 0;
-
-        memcpy(&Inserted, Casted, sizeof(int));
-        memcpy(&m_iWhoWins, &Casted[sizeof(int)], sizeof(int));
-
-        m_HoleVector[Inserted] = false;
-        (*m_vecCaseHoles)[Inserted]->SetIsInserted(true, m_iWhoWins);
-
+        m_iWhoWins = pCasted->_winPlayer;
         m_bCanMove = false;
-
-        if (m_tRoomDesc.MyNumber == m_iWhoWins)
+        if (m_tRoomDesc._myNumber == m_iWhoWins)
         {
-            //Effect
             m_bIMWIN = true;
         }
 
         wchar_t TempVictoryMessage[MAX_PATH] = {};
         wsprintf(TempVictoryMessage, L"System : Player [ %d ] Win.", m_iWhoWins);
+
         EnterCriticalSection_Chat();
         m_Chattings.push_front(PAK_ChattingMessage
         (
             PAK_ChattingMessage::MSGType::Sys,
-            TempVictoryMessage,
-            CMainGame::Get_Instance()->GetCurrTime()
+            CMainGame::Get_Instance()->GetCurrTime(),
+            TempVictoryMessage
         ));
         LeaveCriticalSection_Chat();
-
     }
         break;
     case PacketHeader::PacketType::FORCEDGAMEEND:
     {
+        PAK_GameEnd* pCasted = static_cast<PAK_GameEnd*>(pPacketData);
+
         m_bGameIsEnd = true;
-        memcpy(&m_iWhoWins, Data, sizeof(int));
         m_bCanMove = false;
-        if (m_tRoomDesc.MyNumber == m_iWhoWins)
-        {
-            //Effect
-            m_bIMWIN = true;
-        }
+        m_bIMWIN = true;
 
         wchar_t TempVictoryMessage[MAX_PATH] = {};
         wsprintf(TempVictoryMessage, L"System : Player [ %d ] Win.", m_iWhoWins);
+
         EnterCriticalSection_Chat();
         m_Chattings.push_front(PAK_ChattingMessage
         (
             PAK_ChattingMessage::MSGType::Sys,
-            TempVictoryMessage,
-            CMainGame::Get_Instance()->GetCurrTime()
+            CMainGame::Get_Instance()->GetCurrTime(),
+            TempVictoryMessage
         ));
         LeaveCriticalSection_Chat();
     }
